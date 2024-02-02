@@ -1,0 +1,1 @@
+/usr/bin/clang++ -g CMakeFiles/ServerFramework.dir/main.cpp.o -o ServerFramework 
