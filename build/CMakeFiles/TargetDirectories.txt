@@ -1,5 +1,0 @@
-/home/ruidong/Desktop/ServerFramework/build/CMakeFiles/ServerFramework.dir
-/home/ruidong/Desktop/ServerFramework/build/CMakeFiles/edit_cache.dir
-/home/ruidong/Desktop/ServerFramework/build/CMakeFiles/rebuild_cache.dir
-/home/ruidong/Desktop/ServerFramework/build/source/CMakeFiles/edit_cache.dir
-/home/ruidong/Desktop/ServerFramework/build/source/CMakeFiles/rebuild_cache.dir

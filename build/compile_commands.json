@@ -1,7 +1,0 @@
-[
-{
-  "directory": "/home/ruidong/Desktop/ServerFramework/build",
-  "command": "/usr/bin/clang++   -g -std=gnu++20 -o CMakeFiles/ServerFramework.dir/main.cpp.o -c /home/ruidong/Desktop/ServerFramework/main.cpp",
-  "file": "/home/ruidong/Desktop/ServerFramework/main.cpp"
-}
-]
