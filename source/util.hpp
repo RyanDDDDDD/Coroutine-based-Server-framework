@@ -1,5 +1,5 @@
-#ifndef __SERVER_TUIL_H__
-#define __SERVER_TUIL_H__
+#ifndef __SERVER_TUIL_HPP__
+#define __SERVER_TUIL_HPP__
 
 #include <pthread.h>
 #include <sys/types.h>

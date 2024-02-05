@@ -1,5 +1,5 @@
-#ifndef __SERVER_SINGLETON_H__
-#define __SERVER_SINGLETON_H__
+#ifndef __SERVER_SINGLETON_HPP__
+#define __SERVER_SINGLETON_HPP__
 
 namespace Server {
 

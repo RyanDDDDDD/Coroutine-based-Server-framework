@@ -1,5 +1,5 @@
-#ifndef __SERVER_LOG_H__
-#define __SERVER_LOG_H__
+#ifndef __SERVER_LOG_HPP__
+#define __SERVER_LOG_HPP__
 
 #include <fstream>
 #include <iostream>
@@ -13,7 +13,8 @@
 #include <string.h>
 #include <map>
 
-#include "singleton.h"
+#include "util.hpp"
+#include "singleton.hpp"
 
 // retrive event input stream from logger
 #define SERVER_LOG_LEVEL(logger, level) \
@@ -29,6 +30,7 @@
 #define SERVER_LOG_ERROR(logger) SERVER_LOG_LEVEL(logger, Server::LogLevel::Level::ERROR)
 #define SERVER_LOG_FATAL(logger) SERVER_LOG_LEVEL(logger, Server::LogLevel::Level::FATAL)
 
+// Support user defined format
 #define SERVER_LOG_FMT_LEVEL(logger, level, fmt, ...) \
     if(logger->getLevel() <= level) \
         Server::LogEventWrap(Server::LogEvent::ptr(new Server::LogEvent(logger, level, \
@@ -40,6 +42,9 @@
 #define SERVER_LOG_FMT_WARN(logger, fmt, ...) SERVER_LOG_FMT_LEVEL(logger, Server::LogLevel::Level::WARN, fmt, __VA_ARGS__)
 #define SERVER_LOG_FMT_ERROR(logger, fmt, ...) SERVER_LOG_FMT_LEVEL(logger, Server::LogLevel::Level::ERROR, fmt, __VA_ARGS__)
 #define SERVER_LOG_FMT_FATAL(logger, fmt, ...) SERVER_LOG_FMT_LEVEL(logger, Server::LogLevel::Level::FATAL, fmt, __VA_ARGS__)
+
+// Get default logger from Mgr
+#define SERVER_LOG_ROOT() Server::LoggerMgr::getInstance()->getRoot()
 
 namespace Server {
 
@@ -239,10 +244,19 @@ private:
     std::ofstream m_filestream; // file stream binded to opened file
 };
 
+// Mangger to store all loggers, we can retrieve logger from Mangager
 class LoggerManager {
 public:
     LoggerManager();
+
+    // get a customized logger
     Logger::ptr getLogger(const std::string& name);
+
+    // retrieve a default logger
+    Logger::ptr getRoot() const { return m_root; };
+
+    // store an new loger into manger
+    bool storeLogger(const std::string label, const Logger::ptr logger);
 
     void init();
 
@@ -251,8 +265,7 @@ private:
     Logger::ptr m_root;
 };
 
-typedef Server::Singleton<LoggerManager> LoggerMgr;
-
+using LoggerMgr = Server::Singleton<LoggerManager>;
 
 } // namespace Server
 

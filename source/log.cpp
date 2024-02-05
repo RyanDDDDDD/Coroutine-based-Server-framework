@@ -1,4 +1,4 @@
-#include "log.h"
+#include "log.hpp"
 #include <functional>
 #include <map>
 
@@ -53,7 +53,8 @@ namespace Server {
     }
 
     LogEventWrap::~LogEventWrap() {
-        m_event->getLogger()->log(m_event->getLevel(), m_event);    // output log when deconstuct the wrapper
+        // output log when deconstuct the wrapper
+        m_event->getLogger()->log(m_event->getLevel(), m_event);    
     };
 
     LogFormatter::LogFormatter (const std::string& pattern): m_pattern{ pattern } {
@@ -449,6 +450,16 @@ LoggerManager::LoggerManager() {
 Logger::ptr LoggerManager::getLogger(const std::string& name){
     auto it = m_loggers.find(name);
     return it == m_loggers.end() ? m_root : it->second;
+};
+
+bool LoggerManager::storeLogger(const std::string label, const Logger::ptr logger) {
+    if (m_loggers.find(label) != m_loggers.end()) {
+        std::cout << "label exists: " << label << std::endl;
+        return false;
+    } 
+
+    m_loggers[label] = logger;
+    return true;
 };
 
 }; // namespace Server

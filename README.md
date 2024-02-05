@@ -6,6 +6,13 @@
     Clang 14.0.0
     Cmake 3.22.1
 
+## External Dependency
+
+[Boost](https://www.boost.org/)  \
+[Catch2](https://github.com/catchorg/Catch2) \
+[yaml-cpp](https://github.com/jbeder/yaml-cpp)
+
+
 ## Project Structure
 
     bin --- binaries
@@ -17,7 +24,8 @@
     CMakeLists.txt
     Makefile
 
-## Logger Module
+## Modules
+### Logger Module
 
 [**Log4j**](https:github.com/apache/logging-log4j2) is a java-based logging framework, we will refer to its implementation to create a similar framework.
 
@@ -51,10 +59,19 @@ The message format we would use (refer to [Log4j TTCC](https://en.wikipedia.org/
     %T --- Tab
     %F --- Coroutine Id
 
-## Configuration Module
+### Configuration Module
 
-## Coroutine Module
+Configuration Module is used to store all system configuration.
 
-## Coroutine Schedule Module
+We use **Yaml** as the configuration file to setup our program.
+ 
 
-## IO Coroutine Schedule Module
+### Coroutine Module
+
+### Coroutine Schedule Module
+
+### IO Coroutine Schedule Module
+
+## Testing
+
+We would use Catch2 for unit testing, and a high-resolution timer for performance testing

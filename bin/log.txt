@@ -1,2 +1,0 @@
-	ERROR	test macro error
-	ERROR	test macro fmt error aa
