@@ -1,4 +1,4 @@
-#include "log.hpp"
+#include "log.h"
 #include <functional>
 #include <map>
 
@@ -22,6 +22,38 @@ namespace Server {
         }
 
         return "UNKNOWN";
+    };
+
+
+    LogLevel::Level LogLevel::FromString(const std::string& str) {
+    #define XX(level, v)                \
+        if (str == #v) \
+            return LogLevel::Level::level; \
+            
+            XX(DEBUG, debug);
+            XX(INFO, info);
+            XX(WARN, warn);
+            XX(ERROR, error);
+            XX(FATAL, fatal);
+
+            XX(DEBUG, DEBUG);
+            XX(INFO, INFO);
+            XX(WARN, WARN);
+            XX(ERROR, ERROR);
+            XX(FATAL, FATAL);
+    #undef XX
+        
+        return LogLevel::Level::UNKNOWN;
+    };
+
+    LogEventWrap::LogEventWrap(LogEvent::ptr e): m_event{ e } {};
+    
+    std::stringstream& LogEventWrap::getSS() {
+        return m_event->getSS();
+    }
+
+    LogEventWrap::~LogEventWrap() {
+        m_event->getLogger()->log(m_event->getLevel(), m_event);    // output log when deconstuct the wrapper
     };
 
     LogFormatter::LogFormatter (const std::string& pattern): m_pattern{ pattern } {
@@ -84,12 +116,7 @@ namespace Server {
 
     class DateTimeFormatItem : public LogFormatter::FormatItem {
     public:
-        DateTimeFormatItem(const std::string &format = "%Y-%m-%d %H:%M:%S")
-            :m_format{format} {
-            if (m_format.empty()){
-                m_format = "%Y-%m-%d %H:%M:%S";
-            }
-        };
+        DateTimeFormatItem(const std::string &format = "%Y-%m-%d %H:%M:%S") :m_format{format} {};
 
         void format(std::ostream &os, std::shared_ptr<Logger> logger, LogLevel::Level level, LogEvent::ptr event) override {
             // Converts given time since epoch into calendar time, expressed in local time
@@ -100,7 +127,7 @@ namespace Server {
             // returns a string representing date and time using pre-defined format
             char buf[64];
             strftime(buf, sizeof(buf), m_format.c_str(), &tm);
-            
+
             os << buf;
         };
 
@@ -147,21 +174,53 @@ namespace Server {
         std::string m_string;
     };
 
-    LogEvent::LogEvent(const char* file, int32_t line, uint32_t elapse, 
-                uint32_t threadId,uint32_t fiberId, uint64_t time)
+    class TabFormatItem : public LogFormatter::FormatItem {
+    public:
+        TabFormatItem(const std::string &str){};
+
+        void format(std::ostream &os, std::shared_ptr<Logger> logger, LogLevel::Level level, LogEvent::ptr event) override {
+            os << '\t';
+        };
+    };
+
+    LogEvent::LogEvent(std::shared_ptr<Logger> logger, LogLevel::Level level,
+                        const char* file, int32_t line, uint32_t elapse, 
+                        uint32_t threadId,uint32_t fiberId, uint64_t time)
         : m_file{ file },
         m_line{ line },
         m_elapse{ elapse },
         m_threadId{ threadId },
         m_fiberId{ fiberId },
-        m_time{ time }
+        m_time{ time },
+        m_logger{ logger },
+        m_level{ level }
     {};
+    
+    // accepet variable arguments to pass into format(const char* fmt, va_list al), rewrite later, using variadic template
+    void LogEvent::format(const char* fmt, ...) {
+        va_list al;
+        va_start(al, fmt);
+        format(fmt, al);
+        va_end(al);
+    }
+
+    // provide user interface to setup user-defined format
+    void LogEvent::format(const char* fmt, va_list al) {
+        char* buf = nullptr;
+        
+        int len = vasprintf(&buf, fmt, al); // 
+
+        if (len != -1) {
+            m_ss << std::string(buf, len);
+            free(buf);
+        }
+    };
 
     Logger::Logger (const std::string& name)
         : m_name{ name },
         m_level{LogLevel::Level::DEBUG} {
             
-        m_formatter.reset(new LogFormatter("%d  [%p] <%f:%l> %m %n"));
+        m_formatter.reset(new LogFormatter("%d{%Y-%m-%d %H:%M:%S}%T%t%T%F%T[%p]%T[%c]%f:%l%T%m%n"));
     };
 
     void Logger::addAppender(LogAppender::ptr appender) {
@@ -212,13 +271,17 @@ namespace Server {
         log(LogLevel::Level::FATAL, event);
     };
 
+    FileLogAppender::FileLogAppender (const std::string& filename): m_filename{ filename } {
+        reopen();
+    };
+
     bool FileLogAppender::reopen() {
         if (m_filestream) {
             m_filestream.close();
         }
 
-        m_filestream.open(m_filename);
-        return !m_filestream; // file is opened successfully
+        m_filestream.open(m_filename);  // open file
+        return !m_filestream;           // file is opened successfully
     };
 
     void StdoutLogAppender::log(Logger::ptr logger, LogLevel::Level level, LogEvent::ptr event) {
@@ -229,10 +292,13 @@ namespace Server {
 
     void FileLogAppender::log(Logger::ptr logger, LogLevel::Level level, LogEvent::ptr event) {
         if (level >= m_level) {
-            m_filestream << m_formatter->format(logger, level, event); // output the formatted string into file
+            if(!m_formatter->format(m_filestream, logger, level, event)) {  // output the formatted string into file
+                std::cout << "error" << std::endl;
+            }
         }
     };
 
+    // stdout formatter
     std::string LogFormatter::format(std::shared_ptr<Logger> logger, LogLevel::Level level, LogEvent::ptr event) {
         std::stringstream ss;
         for (auto &i : m_items) { // use FormatItem to format event and store into ss
@@ -240,6 +306,14 @@ namespace Server {
         }
 
         return ss.str();
+    }
+
+    // file output formatter
+    std::ostream& LogFormatter::format(std::ostream& ofs, std::shared_ptr<Logger> logger, LogLevel::Level level, LogEvent::ptr event) {
+        for(auto& i : m_items) {
+            i->format(ofs, logger, level, event);
+        }
+        return ofs;
     }
 
     // set up formatItem according to the given pattern
@@ -267,12 +341,13 @@ namespace Server {
 
             std::string str = "";
             std::string fmt = "";
-           
             while (n < m_pattern.size()) {
-                if (!isalpha(m_pattern[n]) && m_pattern[n] != '{' && m_pattern[n] != '}') {    // end of %xxx
+                if(!fmt_status && (!isalpha(m_pattern[n]) && m_pattern[n] != '{' // end of %xxx
+                    && m_pattern[n] != '}')) {
+                    str = m_pattern.substr(i + 1, n - i - 1);
                     break;
                 }
-
+               
                 if (fmt_status == 0) {
                     if (m_pattern[n] == '{') {
                         str = m_pattern.substr(i + 1, n - i - 1);
@@ -286,12 +361,19 @@ namespace Server {
                 if (fmt_status == 1) {
                     if (m_pattern[n] == '}') {      // end of parsing
                         fmt = m_pattern.substr(fmt_begin + 1, n - fmt_begin - 1);
-                        fmt_status = 2;
+                        fmt_status = 0;
+                        ++n;
                         break;
                     }
                 }
 
                 ++n;
+
+                if (n == m_pattern.size()){
+                    if (str.empty()){
+                        str = m_pattern.substr(i + 1);
+                    }
+                }
             }
 
             if (fmt_status == 0) { // we never meet {}
@@ -300,27 +382,17 @@ namespace Server {
                     nstr.clear();
                 }
 
-                str = m_pattern.substr(i + 1, n - i - 1); // store string with no pattern
                 vec.push_back(std::make_tuple(str, fmt, 1));
-                i = n - 1;
+                i = n - 1;      // update pointer to the last pos
             }
             else if (fmt_status == 1) {
                 std::cout << "pattern error: " << m_pattern << " - " << m_pattern.substr(i) << std::endl;
 
                 vec.push_back(std::make_tuple("<<pattern_error>>", fmt, 0));
             }
-            else if (fmt_status == 2) {
-                if (!nstr.empty()) {
-                    vec.push_back(std::make_tuple(nstr, "", 0));
-                    nstr.clear();
-                }
-
-                vec.push_back(std::make_tuple(str, fmt, 1)); // store whole string with the matching pattern
-                i = n - 1;
-            }
         }
 
-        if (!nstr.empty()) { // no matching format in string
+        if (!nstr.empty()) {        // no matching format in string
             vec.push_back(std::make_tuple(nstr, "", 0));
         }
 
@@ -337,7 +409,9 @@ namespace Server {
             XX(n, NewLineFormatItem),   // %n --- newline char
             XX(d, DateTimeFormatItem),  // %d --- time stamp
             XX(f, FilenameFormatItem),  // %f --- file name
-            XX(l, LineFormatItem)       // %l --- line number
+            XX(l, LineFormatItem),      // %l --- line number
+            XX(T, TabFormatItem),       // %T --- Tab
+            XX(F, FiberIdFormatItem)    // %F --- Coroutine Id
 #undef XX
 
         };
@@ -360,9 +434,21 @@ namespace Server {
             }
 
             // used for debug
-            std::cout << "(" << std::get<0>(i) << ") - (" << std::get<1>(i) << ") - ("
-                      << std::get<2>(i) << ")" << std::endl;
+            // std::cout << "(" << std::get<0>(i) << ") - (" << std::get<1>(i) << ") - ("
+            //           << std::get<2>(i) << ")" << std::endl;
         }
 
-    }; // namespace Server   
+    }; 
+
+LoggerManager::LoggerManager() {
+    m_root.reset(new Logger);
+
+    m_root->addAppender(LogAppender::ptr(new StdoutLogAppender));   // default appender for logger
+};
+
+Logger::ptr LoggerManager::getLogger(const std::string& name){
+    auto it = m_loggers.find(name);
+    return it == m_loggers.end() ? m_root : it->second;
+};
+
 }; // namespace Server

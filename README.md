@@ -23,9 +23,9 @@
 
     Logger (Define Logger class)
         |
-        |  -----Formatter (format Log)
-        |  |
-    Appender (Logger output)
+        |  
+        |  
+    Appender (Logger output) ----- Formatter (format Log)
         |
         |----------
         |         |
@@ -42,28 +42,19 @@ The message format we would use (refer to [Log4j TTCC](https://en.wikipedia.org/
     %m --- message body
     %p --- priority level
     %r --- number of milliseconds elapsed since the logger created
+    %c --- name of logger
     %t --- thread id
     %n --- newline char
     %d --- time stamp
     %f --- file name
     %l --- line number
+    %T --- Tab
+    %F --- Coroutine Id
+
+## Configuration Module
 
 ## Coroutine Module
 
 ## Coroutine Schedule Module
 
 ## IO Coroutine Schedule Module
-
-## Hook Module
-
-## Scoket Module
-
-## ByteArray Sequentialization Module
-
-## TcpServer Module
-
-## Stream Module
-
-## Http Module
-
-## Servlet Module
