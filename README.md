@@ -44,6 +44,17 @@ When we try to log info, we would pass an event into Logger, the Logger would us
 
 The appender contains a formatter, which contains a set of formatter items, these items could be config by our pre-defined pattern (support default pattern if we don't set a specific pattern)
 
+
+__This module supports__:
+
+    1. Output logs in streaming log style 
+    
+    2. customized log formats, log levels
+    
+    3. multi-log separation: enable logging same info with different output destination 
+
+    3. free configuration of log such as time, thread ID, thread name, log level, log name, file name, line number.
+
 ------
 #### Message Format
 
@@ -82,7 +93,7 @@ Logging level indicate serverity or importance of the messages logged by the app
 
 Configuration Module is used to store all system configuration.
 
-We use **Yaml** as the configuration file to setup our program.
+We use [**Yaml**](https://www.cloudbees.com/blog/yaml-tutorial-everything-you-need-get-started) as the configuration file to setup our program.
  
 
 ### Coroutine Module

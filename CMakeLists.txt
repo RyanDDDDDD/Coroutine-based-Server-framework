@@ -5,28 +5,12 @@ set(CMAKE_VERBOSE_MAKEFILE ON)
 find_package(Boost)
 include_directories(${Boost_INCLUDE_DIRS})
 
-include(FetchContent)
+find_package(yaml-cpp)
+include_directories(${YAML_CPP_INCLUDE_DIRS})
 
-FetchContent_Declare(
-  yaml-cpp
-  GIT_REPOSITORY https://github.com/jbeder/yaml-cpp.git
-  GIT_TAG master # Can be a tag (yaml-cpp-x.x.x), a commit hash, or a branch name (master)
-)
-FetchContent_GetProperties(yaml-cpp)
-
-if(NOT yaml-cpp_POPULATED)
-  message(STATUS "Fetching yaml-cpp...")
-  FetchContent_Populate(yaml-cpp)
-  add_subdirectory(${yaml-cpp_SOURCE_DIR} ${yaml-cpp_BINARY_DIR})
-  include_directories(${YAML_CPP_INCLUDE_DIRS})
-#   include_directories(${YAML_CPP_INCLUDE_DIRS}) # should use target_include_directories
-endif()
-
-# target_link_libraries(YOUR_LIBRARY PUBLIC yaml-cpp::yaml-cpp) # The library or executable that require yaml-cpp library
-
-# set(CMAKE_CXX_FLAGS "$ENV{CXXFLAGS} -rdynamic -O3 -g -std=c++11 -Wall -Wno-deprecated -Werror -Wno-unused-function")
-set(CXX_STANDARD C++20)
-set(CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(CMAKE_CXX_FLAGS "$ENV{CXXFLAGS} -O3 -g -Wall -Wno-deprecated -Werror -Wno-unused-function")
 

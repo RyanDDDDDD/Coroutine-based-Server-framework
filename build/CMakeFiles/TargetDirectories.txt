@@ -1,0 +1,5 @@
+/home/ruidong/Desktop/ServerFramework/build/CMakeFiles/lib.dir
+/home/ruidong/Desktop/ServerFramework/build/CMakeFiles/test.dir
+/home/ruidong/Desktop/ServerFramework/build/CMakeFiles/test_config.dir
+/home/ruidong/Desktop/ServerFramework/build/CMakeFiles/edit_cache.dir
+/home/ruidong/Desktop/ServerFramework/build/CMakeFiles/rebuild_cache.dir

@@ -1,0 +1,1 @@
+/usr/bin/clang++ -fPIC  -O3 -g -Wall -Wno-deprecated -Werror -Wno-unused-function -g -shared -Wl,-soname,liblib.so -o ../lib/liblib.so CMakeFiles/lib.dir/source/log.cpp.o CMakeFiles/lib.dir/source/util.cpp.o CMakeFiles/lib.dir/source/config.cpp.o 
