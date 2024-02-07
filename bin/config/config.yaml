@@ -14,3 +14,30 @@ logs:
       - type: FileLogAppender
         path: log.txt
       - type: StdoutLogAppender
+
+system:
+    port: 9900
+    value: 15
+    int_vec:
+      - 10
+      - 30
+    int_list:
+      - 10
+      - 30
+      - 40
+    int_set:
+      - 20
+      - 40
+      - 60
+    int_unordered_set:
+      - 20
+      - 40
+      - 60
+    str_int_map:
+      k: 30
+      k2: 40
+      k3: 50
+    str_int_unordered_map:
+      k: 20
+      k2: 30
+      k3: 40

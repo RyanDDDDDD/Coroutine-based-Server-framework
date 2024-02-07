@@ -9,9 +9,9 @@
 #include <cstdint>
 
 namespace Server {
-    pid_t GetThreadId();
+    pid_t getThreadId();
 
-    uint32_t GetFiberId();
+    uint32_t getFiberId();
 }
 
 #endif

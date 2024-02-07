@@ -6,7 +6,7 @@ find_package(Boost)
 include_directories(${Boost_INCLUDE_DIRS})
 
 find_package(yaml-cpp)
-include_directories(${YAML_CPP_INCLUDE_DIRS})
+include_directories(${YAML_CPP_INCLUDE_DIR})
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -22,13 +22,15 @@ set(LIB_SRC
 
 add_library(lib SHARED ${LIB_SRC})
 
+# Logger test module
 add_executable(test tests/test.cpp)
 add_dependencies(test lib)
-target_link_libraries(test PUBLIC yaml-cpp::yaml-cpp lib)
+target_link_libraries(test lib yaml-cpp::yaml-cpp)
 
+# Configuration test module
 add_executable(test_config tests/test_config.cpp)
 add_dependencies(test_config lib)
-target_link_libraries(test_config PUBLIC yaml-cpp::yaml-cpp lib)
+target_link_libraries(test_config lib yaml-cpp::yaml-cpp)
 
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)

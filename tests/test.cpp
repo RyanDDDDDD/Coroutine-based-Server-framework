@@ -9,7 +9,7 @@ int main(){
     // logger->addAppender(Server::LogAppender::ptr(new Server::StdoutLogAppender));   // output to console
 
     // Server::FileLogAppender::ptr file_appender(new Server::FileLogAppender("./log.txt"));
-    // // Server::LogEvent::ptr event(new Server::LogEvent(__FILE__,__LINE__, 0, Server::GetThreadId(), Server::GetFiberId(), time(0)));
+    // // Server::LogEvent::ptr event(new Server::LogEvent(__FILE__,__LINE__, 0, Server::getThreadId(), Server::getFiberId(), time(0)));
 
     // Server::LogFormatter::ptr fmt(new Server::LogFormatter("%d%T%p%T%m%n"));
 

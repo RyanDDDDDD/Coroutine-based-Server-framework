@@ -21,8 +21,8 @@
     if (logger->getLevel() <= level) \
         Server::LogEventWrap(   \
             Server::LogEvent::ptr(new Server::LogEvent( \
-            logger, level, __FILE__, __LINE__, 0, Server::GetThreadId(), \
-            Server::GetFiberId(), time(0)))).getSS()
+            logger, level, __FILE__, __LINE__, 0, Server::getThreadId(), \
+            Server::getFiberId(), time(0)))).getSS()
 
 #define SERVER_LOG_DEBUG(logger) SERVER_LOG_LEVEL(logger, Server::LogLevel::Level::DEBUG)
 #define SERVER_LOG_INFO(logger) SERVER_LOG_LEVEL(logger, Server::LogLevel::Level::INFO)
@@ -34,8 +34,8 @@
 #define SERVER_LOG_FMT_LEVEL(logger, level, fmt, ...) \
     if(logger->getLevel() <= level) \
         Server::LogEventWrap(Server::LogEvent::ptr(new Server::LogEvent(logger, level, \
-        __FILE__, __LINE__,  0, Server::GetThreadId(), \
-        Server::GetFiberId(), time(0)))).getEvent()->format(fmt, __VA_ARGS__)
+        __FILE__, __LINE__,  0, Server::getThreadId(), \
+        Server::getFiberId(), time(0)))).getEvent()->format(fmt, __VA_ARGS__)
 
 #define SERVER_LOG_FMT_DEBUG(logger, fmt, ...) SERVER_LOG_FMT_LEVEL(logger, Server::LogLevel::Level::DEBUG, fmt, __VA_ARGS__)
 #define SERVER_LOG_FMT_INFO(logger, fmt, ...) SERVER_LOG_FMT_LEVEL(logger, Server::LogLevel::Level::INFO, fmt, __VA_ARGS__)

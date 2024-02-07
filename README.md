@@ -8,9 +8,10 @@
 
 ## External Dependency
 
-[Boost](https://www.boost.org/)  \
-[Catch2](https://github.com/catchorg/Catch2) \
-[yaml-cpp](https://github.com/jbeder/yaml-cpp)
+[Boost](https://www.boost.org/) : Boost is a widely-used collection of open-source, peer-reviewed libraries that extend the functionality of the C++ programming language. \
+[Catch2](https://github.com/catchorg/Catch2) : 
+Catch2 is a modern, C++-native, header-only testing framework for unit tests, TDD (Test Driven Development), and BDD (Behavior Driven Development). \
+[yaml-cpp](https://github.com/jbeder/yaml-cpp) : yaml-cpp is a C++ library for parsing and emitting YAML (YAML Ain't Markup Language) data. 
 
 
 ## Project Structure
@@ -45,20 +46,17 @@ When we try to log info, we would pass an event into Logger, the Logger would us
 The appender contains a formatter, which contains a set of formatter items, these items could be config by our pre-defined pattern (support default pattern if we don't set a specific pattern)
 
 
-__This module supports__:
+__Module Features__:
 
-    1. Output logs in streaming log style 
+1. Output logs in streaming log style 
+```cpp
+    Server::Logger::ptr logger(new Server::Logger); 
+    SERVER_LOG_INFO(logger) << "Event occur"; // store any messages into stream
+```
     
-    2. customized log formats, log levels
-    
-    3. multi-log separation: enable logging same info with different output destination 
+2. Support customized log formats
 
-    3. free configuration of log such as time, thread ID, thread name, log level, log name, file name, line number.
-
-------
-#### Message Format
-
-The message format we would use (refer to [Log4j TTCC](https://en.wikipedia.org/wiki/Log4j#cite_note-28))
+The logging format we use (refer to [Log4j TTCC](https://en.wikipedia.org/wiki/Log4j#cite_note-28))
 
     %m --- message body
     %p --- priority level
@@ -72,7 +70,9 @@ The message format we would use (refer to [Log4j TTCC](https://en.wikipedia.org/
     %T --- Tab
     %F --- Coroutine Id
 
-You can also use the placeholders above to setup your customized formatter.
+3. multi-log separation: enable logging same info with different output destination 
+
+3. free configuration of log such as time, thread ID, thread name, log level, log name, file name, line number.
 
 ----- 
 #### Logging Level
@@ -91,10 +91,29 @@ Logging level indicate serverity or importance of the messages logged by the app
 -----
 ### Configuration Module
 
-Configuration Module is used to store all system configuration.
+Configuration Module is used to store all system configuration. We use "Convention over Configuration" principle to design the module, and avoid unnecessary pre-configuration.
 
-We use [**Yaml**](https://www.cloudbees.com/blog/yaml-tutorial-everything-you-need-get-started) as the configuration file to setup our program.
- 
+__Module Features__:
+
+1. Using yaml-cpp as parsing tool to load yaml file
+
+2. Support configuration via complex user-defined class (Support serialization and deserialization)
+
+```cpp
+YAML::NODE node = YAML::LoadFile(filename)
+
+for (auto it = node.begin(); it != node.end(); ++it) {
+    it->first, it->second
+}
+
+for (size_t i = 0; i < node.size(); ++i) {
+
+}
+
+```
+3. Using partial specialized template to support conversion between stl container(map/unordered_map, set/unordered_set, vector, list) and Yaml
+
+__Note__: At this point, the key of map only support std::string type
 
 ### Coroutine Module
 
