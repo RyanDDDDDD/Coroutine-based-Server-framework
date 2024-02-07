@@ -1,1 +1,0 @@
-/usr/bin/clang++  -O3 -g -Wall -Wno-deprecated -Werror -Wno-unused-function -g CMakeFiles/test_config.dir/tests/test_config.cpp.o -o ../bin/test_config  -Wl,-rpath,/home/ruidong/Desktop/ServerFramework/lib /usr/local/lib/libyaml-cpp.a ../lib/liblib.so 
