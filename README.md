@@ -91,13 +91,13 @@ Logging level indicate serverity or importance of the messages logged by the app
 -----
 ### Configuration Module
 
-Configuration Module is used to store all system configuration. We use "Convention over Configuration" principle to design the module, and avoid unnecessary pre-configuration.
+Configuration Module is used to store all system configuration. We use ["Convention over Configuration"](https://facilethings.com/blog/en/convention-over-configuration) principle to design the module, and avoid unnecessary pre-configuration.
 
 __Module Features__:
 
-1. Using yaml-cpp as parsing tool to load yaml file
+1. Used yaml-cpp as parsing tool to load yaml file
 
-2. Support configuration via complex user-defined class (Support serialization and deserialization)
+2. Support yaml serialization and deserialization
 
 ```cpp
 YAML::NODE node = YAML::LoadFile(filename)
@@ -111,10 +111,9 @@ for (size_t i = 0; i < node.size(); ++i) {
 }
 
 ```
-3. Support conversion between stl container(map/unordered_map, set/unordered_set, vector, list) and Yaml via partial specialized template
+3. Used partial specialized template to support conversion between stl container(map/unordered_map, set/unordered_set, vector, list) and Yaml
 
-3. Support complex conversion between user-defined class and Yaml via fully specialized template
-
+4. Support nontification event when configuration is changed : Once configuration in yaml file is changed, we can detect and update during run time via callback ([Observer pattern](https://refactoring.guru/design-patterns/observer)).
 
 __Note__: At this point, the key of map only support std::string type
 

@@ -123,6 +123,12 @@ public:
         
         return ss.str();
     }
+
+    bool operator== (const Person& p) const {
+        return m_name == p.m_name 
+            && m_age == p.m_age 
+            && m_sex == p.m_sex;
+    }
 };
 
 namespace Server {
@@ -174,7 +180,7 @@ Server::ConfigArg<std::map<std::string, std::vector<Person>>>::ptr g_person_vec_
     Server::ConfigMgr::lookUp("class.vec_map", std::map<std::string, std::vector<Person>>(), "system admin");
 
 void test_class() {
-    // SERVER_LOG_INFO(SERVER_LOG_ROOT()) << "before: " << g_person->getValue().toString() << " - " << g_person->toString();
+    SERVER_LOG_INFO(SERVER_LOG_ROOT()) << "before: " << g_person->getValue().toString() << " - " << g_person->toString();
 
 #define XX_PM(g_var, prefix) \
     {   \
@@ -185,14 +191,20 @@ void test_class() {
         SERVER_LOG_INFO(SERVER_LOG_ROOT()) << #prefix << ": size = " << m.size(); \
     }   \
 
-    // XX_PM(g_person_map, "class.map before");
+    // when calling loadFromYaml, it would call this callback and print new value
+    g_person->addListener(10, [](const Person& oldValue, const Person& newValue){
+        SERVER_LOG_INFO(SERVER_LOG_ROOT()) << "old value = " << oldValue.toString() << ", "
+                                        << "new value = " << newValue.toString();
+    });
+
+    XX_PM(g_person_map, "class.map before");
     SERVER_LOG_INFO(SERVER_LOG_ROOT()) << "before: " << g_person_vec_map->toString();
 
-    YAML::Node root = YAML::LoadFile("config/config.yaml");
+    YAML::Node root = YAML::LoadFile("/home/ruidong/Desktop/ServerFramework/bin/config/config.yaml");
     Server::ConfigMgr::loadFromYaml(root);
 
-    // SERVER_LOG_INFO(SERVER_LOG_ROOT()) << "after: " << g_person->getValue().toString() << " - " << g_person->toString();
-    // XX_PM(g_person_map, "class.map after");
+    SERVER_LOG_INFO(SERVER_LOG_ROOT()) << "after: " << g_person->getValue().toString() << " - " << g_person->toString();
+    XX_PM(g_person_map, "class.map after");
     SERVER_LOG_INFO(SERVER_LOG_ROOT()) << "after: " << g_person_vec_map->toString();
 #undef XX_PM
 };

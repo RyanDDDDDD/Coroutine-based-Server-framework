@@ -12,6 +12,7 @@
 #include <unordered_map>
 #include <set>
 #include <unordered_set>
+#include <functional>
 
 #include "log.hpp"
 
@@ -46,7 +47,6 @@ protected:
     std::string m_name;        // name of argument
 
     std::string m_description; // argument description
-
 };
 
 // template class for basic type convertion (F fromType, T toType )
@@ -300,6 +300,7 @@ template<typename T, typename FromStr = LexicalCast<std::string, T>, typename To
 class ConfigArg : public ConfigArgBase {
 public:
     using ptr = std::shared_ptr<ConfigArg>;
+    using onChangeCallBack = std::function<void (const T& oldValue, const T& newValue)>;
 
     ConfigArg(const std::string& name,
             const T& default_value,
@@ -335,11 +336,43 @@ public:
     };
 
     const T getValue() const { return m_val; };
-    void setValue(T val) { m_val = val;};
+
+    void setValue(const T& val) { 
+        if (m_val == val) {
+            return;
+        }
+        
+        // process each callback
+        for (auto& i : m_cbs) {
+            i.second(m_val, val);
+        }
+
+        m_val = val;
+    };
+
     std::string getTypeName() const override { return typeid(T).name(); };
+
+    void addListener(uint64_t key, onChangeCallBack cb) {
+        m_cbs[key] = cb;
+    }
+
+    void delListener(uint64_t key) {
+        m_cbs.erase(key);
+    }
+
+    onChangeCallBack getListener(uint64_t key) {
+        auto it = m_cbs.find(key);
+        return it == m_cbs.end() ? nullptr : it->second;
+    }
+
+    void clearListener() {
+        m_cbs.clear();
+    }
 
 private:
     T m_val;    // argument could be differnt types
+
+    std::map<uint64_t, onChangeCallBack> m_cbs;
 };
 
 // Manager to store all configuration parameters
@@ -397,6 +430,7 @@ public:
     static void loadFromYaml(const YAML::Node& root);
 
     static ConfigArgBase::ptr lookUpBase(const std::string& name);
+
 
 private:
     static ConfigArgMap m_data;
