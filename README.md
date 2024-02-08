@@ -111,7 +111,10 @@ for (size_t i = 0; i < node.size(); ++i) {
 }
 
 ```
-3. Using partial specialized template to support conversion between stl container(map/unordered_map, set/unordered_set, vector, list) and Yaml
+3. Support conversion between stl container(map/unordered_map, set/unordered_set, vector, list) and Yaml via partial specialized template
+
+3. Support complex conversion between user-defined class and Yaml via fully specialized template
+
 
 __Note__: At this point, the key of map only support std::string type
 
