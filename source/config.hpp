@@ -41,7 +41,7 @@ public:
 
     virtual std::string toString() = 0;
     virtual bool fromString(const std::string& val) = 0;
-
+    virtual std::string getTypeName() const = 0;
 protected:
     std::string m_name;        // name of argument
 
@@ -317,7 +317,6 @@ public:
                                                 << e.what() << " convert: " 
                                                 << typeid(m_val).name() << " to string";
         }
-
         return "";
     };
 
@@ -336,8 +335,9 @@ public:
     };
 
     const T getValue() const { return m_val; };
-
     void setValue(T val) { m_val = val;};
+    std::string getTypeName() const override { return typeid(T).name(); };
+
 private:
     T m_val;    // argument could be differnt types
 };
@@ -358,11 +358,21 @@ public:
             throw std::invalid_argument(name) ;
         }
 
-        auto tmp = lookUp<T>(name);
-        if (tmp) {
-            SERVER_LOG_INFO(SERVER_LOG_ROOT()) << "Lookup name = " << name << " exists ";
-            return tmp;
+        auto it = m_data.find(name);
+        if (it != m_data.end()) {
+            auto tmp = std::dynamic_pointer_cast<ConfigArg<T>>(it->second);
+            if (tmp) {
+                SERVER_LOG_INFO(SERVER_LOG_ROOT()) << "Lookup name = " << name << " exists ";
+                return tmp;                
+            } else {
+                // different types of vlaue, cannot be converted to corresponding shared_ptr
+                SERVER_LOG_INFO(SERVER_LOG_ROOT()) << "Lookup name = " 
+                            << name << " exists but type conflict: current type: <" <<  typeid(T).name()
+                            <<  ">, real type: <" << it->second->getTypeName() << ">, " << it->second->toString();
+                return nullptr;
+            }
         }
+
 
         // store argument into mgr
         typename ConfigArg<T>::ptr nArg(new ConfigArg<T>(name, default_value, description));
@@ -379,6 +389,7 @@ public:
         }
         
         // convert shared_ptr to base class to a shared_ptr to derived class
+        // Note: this would return nullptr when trying to return configurations with same key but different value types
         return std::dynamic_pointer_cast<ConfigArg<T>>(it->second);
     };
     

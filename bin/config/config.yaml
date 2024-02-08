@@ -41,3 +41,33 @@ system:
       k: 20
       k2: 30
       k3: 40
+
+class:
+  person:
+    name: Ryan
+    age: 25
+    sex: true
+  map:
+    user01:
+      name: Ryan
+      age: 20
+      sex: false
+    user02:
+      name: Ryan2
+      age: 30
+      sex: false
+  vec_map:
+    k1:
+      - name: m1
+        age: 33
+        sex: true
+      - name: m2
+        age: 44
+        sex: false
+    k2:
+      - name: m21
+        age: 33
+        sex: true
+      - name: m222
+        age: 44
+        sex: false
