@@ -29,6 +29,7 @@ static void listAllMember(const std::string& key,
     if (node.IsMap()) {
         for (auto it = node.begin(); it != node.end(); ++it) {
             // store key-value as: parent.child - child-value
+            // recursively call this method to process all nodes
             listAllMember(key.empty() ? it->first.Scalar() : key + '.' + it->first.Scalar(), it->second, output);
         }
     }
@@ -49,7 +50,7 @@ void ConfigMgr::loadFromYaml(const YAML::Node& root) {
         ConfigArgBase::ptr arg = lookUpBase(key);
         
         if (arg) {
-            if (i.second.IsScalar()) {          // int or float
+            if (i.second.IsScalar()) {          // int/float/string
                 arg->fromString(i.second.Scalar());
             } else {
                 std::stringstream ss;
