@@ -1,6 +1,10 @@
 #include "log.hpp"
-#include <functional>
+#include "config.hpp"
 #include <map>
+#include <functional>
+#include <iostream>
+#include <time.h>
+#include <string.h>
 
 namespace Server {
 
@@ -93,7 +97,7 @@ namespace Server {
         NameFormatItem(const std::string& str = ""){};
 
         void format(std::ostream &os, std::shared_ptr<Logger> logger, LogLevel::Level level, LogEvent::ptr event) override {
-            os << logger->getName();
+            os << event->getLogger()->getName();
         }
     };
 
@@ -220,8 +224,12 @@ namespace Server {
     Logger::Logger (const std::string& name)
         : m_name{ name },
         m_level{LogLevel::Level::DEBUG} {
-            
         m_formatter.reset(new LogFormatter("%d{%Y-%m-%d %H:%M:%S}%T%t%T%F%T[%p]%T[%c]%f:%l%T%m%n"));
+        
+        if (name == "root") {
+            m_appenders.push_back(StdoutLogAppender::ptr(new StdoutLogAppender()));
+        }
+            
     };
 
     void Logger::addAppender(LogAppender::ptr appender) {
@@ -246,8 +254,13 @@ namespace Server {
         if (level >= m_level) {
             auto self = shared_from_this();
             
-            for (auto &appender : m_appenders) {
-                appender->log(self, level, event);
+            if (!m_appenders.empty()) {
+                // output event to different destination
+                for (auto &appender : m_appenders) {
+                    appender->log(self, level, event);
+                }
+            } else if (m_root) {
+                m_root->log(level, event);
             }
         }
     };
@@ -419,8 +432,8 @@ namespace Server {
 
         // start parsing the split string and convert into the given format
         for (auto &i : vec) {
-            if (std::get<2>(i) == 0) {
-                m_items.push_back(FormatItem::ptr(new StringFormatItem(std::get<0>(i))));   // raw string
+            if (std::get<2>(i) == 0) { // raw string
+                m_items.push_back(FormatItem::ptr(new StringFormatItem(std::get<0>(i))));   
             }
             else {
                 auto it = s_format_items.find(std::get<0>(i)); // current string contains pattern
@@ -443,13 +456,24 @@ namespace Server {
 
 LoggerManager::LoggerManager() {
     m_root.reset(new Logger);
-
     m_root->addAppender(LogAppender::ptr(new StdoutLogAppender));   // default appender for logger
+
+    init();
 };
 
 Logger::ptr LoggerManager::getLogger(const std::string& name){
     auto it = m_loggers.find(name);
-    return it == m_loggers.end() ? m_root : it->second;
+
+    if (it != m_loggers.end()) {
+        return it->second;
+    }
+
+    // create and store an new logger with name
+    Logger::ptr logger(new Logger(name));
+    logger->m_root = m_root;
+    m_loggers[name] = logger;
+
+    return logger;
 };
 
 bool LoggerManager::storeLogger(const std::string label, const Logger::ptr logger) {
@@ -460,6 +484,58 @@ bool LoggerManager::storeLogger(const std::string label, const Logger::ptr logge
 
     m_loggers[label] = logger;
     return true;
+};
+
+struct LogAppenderDefine {
+    int type = 0; // 1 File, 2 Stdout
+    LogLevel::Level level = LogLevel::Level::UNKNOWN;
+    std::string formatter;
+    std::string m_file;
+
+    bool operator==(const LogAppenderDefine& oth) const {
+        return type == oth.type
+            && level == oth.type
+            && formatter = oth.formatter
+            && m_file == oth.m_file;
+    }
+};
+    
+struct LogDefine {
+    std::string name ;
+    LogLevel::Level level = LogLevel::Level::UNKNOWN;
+    std::string formattrer;
+    std::vector<LogAppenderDefine> appenders;
+
+    bool operator==(const LogDefine& oth) {
+        return name == oth.name
+        && level == oth.level
+        && formattrer == oth.formattrer
+        && appenders == oth.appenders;
+    }
+    
+    bool operator<(const LogDefine& oth) const {
+        return name < oth.name;
+    }
+};
+
+Server::ConfigArg<std::set<LogDefine>> g_log_defines = 
+    Server::ConfigMgr::lookUp("logs", std::set<LogDefine>(), "logs config");
+
+// intialize before main() to config logger
+struct LogIniter {
+    LogIniter() {
+        g_log_defines->addListener(0xF1E231, [](const std::set<LogDefine>& oldValue, 
+                                            const std::set<LogDefine>& newValue) {
+            
+
+        });
+    }
+};
+
+static LogIniter __log_init;
+
+void LoggerManager::init() {
+
 };
 
 }; // namespace Server

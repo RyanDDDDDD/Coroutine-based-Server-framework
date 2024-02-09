@@ -55,7 +55,7 @@ void print_yaml(const YAML::Node& node, int level) {
 };
 
 void test_yaml() {
-    YAML::Node root = YAML::LoadFile("config/config.yaml");
+    YAML::Node root = YAML::LoadFile("/home/ruidong/Desktop/ServerFramework/bin/config/test.yaml");
     print_yaml(root, 0);
 
     SERVER_LOG_INFO(SERVER_LOG_ROOT()) << root.Scalar();
@@ -91,7 +91,7 @@ void test_config() {
     XX_M(g_str_int_map_value_config, int_map, before);
     XX_M(g_str_int_unordered_map_value_config, str_int_unordered_map, before);
 
-    YAML::Node root = YAML::LoadFile("config/config.yaml");
+    YAML::Node root = YAML::LoadFile("/home/ruidong/Desktop/ServerFramework/bin/config/test.yaml");
     Server::ConfigMgr::loadFromYaml(root);
 
     SERVER_LOG_INFO(SERVER_LOG_ROOT()) << "after: " << g_int_value_config->getValue();
@@ -114,6 +114,7 @@ public:
     int m_age = 0;
     bool m_sex = false;
 
+    // output class member  
     std::string toString() const {
         std::stringstream ss;
         ss << "[Person name = "  << m_name
@@ -170,6 +171,7 @@ public:
 };
 }
 
+// xxx.yyy.zzz: define the structure level of yaml arguments and store each key-value into Mgr
 Server::ConfigArg<Person>::ptr g_person = 
     Server::ConfigMgr::lookUp("class.person", Person(), "system admin");
 
@@ -200,12 +202,13 @@ void test_class() {
     XX_PM(g_person_map, "class.map before");
     SERVER_LOG_INFO(SERVER_LOG_ROOT()) << "before: " << g_person_vec_map->toString();
 
-    YAML::Node root = YAML::LoadFile("/home/ruidong/Desktop/ServerFramework/bin/config/config.yaml");
+    YAML::Node root = YAML::LoadFile("/home/ruidong/Desktop/ServerFramework/bin/config/test.yaml");
     Server::ConfigMgr::loadFromYaml(root);
 
     SERVER_LOG_INFO(SERVER_LOG_ROOT()) << "after: " << g_person->getValue().toString() << " - " << g_person->toString();
     XX_PM(g_person_map, "class.map after");
     SERVER_LOG_INFO(SERVER_LOG_ROOT()) << "after: " << g_person_vec_map->toString();
+
 #undef XX_PM
 };
 

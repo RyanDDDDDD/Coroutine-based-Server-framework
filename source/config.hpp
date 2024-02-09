@@ -352,22 +352,16 @@ public:
 
     std::string getTypeName() const override { return typeid(T).name(); };
 
-    void addListener(uint64_t key, onChangeCallBack cb) {
-        m_cbs[key] = cb;
-    }
+    void addListener(uint64_t key, onChangeCallBack cb) { m_cbs[key] = cb; }
 
-    void delListener(uint64_t key) {
-        m_cbs.erase(key);
-    }
+    void delListener(uint64_t key) { m_cbs.erase(key); }
 
     onChangeCallBack getListener(uint64_t key) {
         auto it = m_cbs.find(key);
         return it == m_cbs.end() ? nullptr : it->second;
     }
 
-    void clearListener() {
-        m_cbs.clear();
-    }
+    void clearListener() { m_cbs.clear(); }
 
 private:
     T m_val;    // argument could be differnt types
@@ -429,6 +423,7 @@ public:
     // recursively load configuration parameters from yaml
     static void loadFromYaml(const YAML::Node& root);
 
+    // look up the pointer to base arg
     static ConfigArgBase::ptr lookUpBase(const std::string& name);
 
 

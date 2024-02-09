@@ -16,7 +16,7 @@
 #include "util.hpp"
 #include "singleton.hpp"
 
-// retrive event input stream from logger
+// retrieve event input stream from logger
 #define SERVER_LOG_LEVEL(logger, level) \
     if (logger->getLevel() <= level) \
         Server::LogEventWrap(   \
@@ -45,11 +45,15 @@
 
 // Get default logger from Mgr
 #define SERVER_LOG_ROOT() Server::LoggerMgr::getInstance()->getRoot()
+// Get logger with specific name 
+#define SERVER_LOG_NAME(name) Server::LoggerMMgr::getInstance()->getLogger(name)
+
 
 namespace Server {
 
 class Logger;
 class LogFormatter;
+class LoggerManager;
 
 // Log (message) Level
 class LogLevel {
@@ -194,6 +198,7 @@ protected:
 
 // Logger
 class Logger : public std::enable_shared_from_this<Logger> {
+    friend class LoggerManager;
 public:
     using ptr = std::shared_ptr<Logger>;
 
@@ -221,6 +226,7 @@ private:
     LogLevel::Level m_level;                    // minimum Level of Log which can be processed by Logger
     std::list<LogAppender::ptr> m_appenders;    // a list of appenders to output log, we can customize appenders to output to different position
     LogFormatter::ptr m_formatter;              // when the added formatter is not set properly, assign logger formatter to it
+    Logger::ptr m_root;
 };
 
 // Output to console
@@ -244,6 +250,8 @@ private:
     std::ofstream m_filestream; // file stream binded to opened file
 };
 
+/* add more customized appender below */
+
 // Mangger to store all loggers, we can retrieve logger from Mangager
 class LoggerManager {
 public:
@@ -258,10 +266,13 @@ public:
     // store an new loger into manger
     bool storeLogger(const std::string label, const Logger::ptr logger);
 
+    // initialize setting using configuration module
     void init();
 
 private:
     std::map<std::string, Logger::ptr> m_loggers;
+
+    // default logger
     Logger::ptr m_root;
 };
 
