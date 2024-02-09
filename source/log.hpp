@@ -45,6 +45,9 @@
 
 // Get default logger from Mgr
 #define SERVER_LOG_ROOT() Server::LoggerMgr::getInstance()->getRoot()
+// Get logger with specific name 
+#define SERVER_LOG_NAME(name) Server::LoggerMgr::getInstance()->getLogger(name)
+
 
 namespace Server {
 
@@ -149,7 +152,7 @@ public:
                         LogLevel::Level level,
                         LogEvent::ptr event); // format event to string
 public:
-    // sub-module to parse Log Event
+    // sub-module to parse Log Event, each formatItem is related to specific pattern(placeholder in pattern)
     class FormatItem {
     public:
         using ptr = std::shared_ptr<FormatItem>;
@@ -262,6 +265,8 @@ public:
 
 private:
     std::map<std::string, Logger::ptr> m_loggers;
+
+    // default logger
     Logger::ptr m_root;
 };
 
