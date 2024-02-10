@@ -46,7 +46,7 @@
 // Get default logger from Mgr
 #define SERVER_LOG_ROOT() Server::LoggerMgr::getInstance()->getRoot()
 // Get logger with specific name 
-#define SERVER_LOG_NAME(name) Server::LoggerMMgr::getInstance()->getLogger(name)
+#define SERVER_LOG_NAME(name) Server::LoggerMgr::getInstance()->getLogger(name)
 
 
 namespace Server {
@@ -115,11 +115,11 @@ private:
     uint32_t m_threadId   = 0;       // thread Id
     uint32_t m_fiberId    = 0;       // coroutine Id
     uint64_t m_time       = 0;       // time stamp
-    std::stringstream m_ss;          // input stream for user input
 
     std::shared_ptr<Logger> m_logger; // ptr to the logger which format current event
 
     LogLevel::Level m_level;          // event level
+    std::stringstream m_ss;          // input stream for user input
 };
 
 // A Wrapper for Event, which can be used to retrieve input stream of event
@@ -170,8 +170,11 @@ public:
     
     void init ();                         // config formatterItem with the given pattern(m_pattern)
 
+    bool isError() const { return m_error; }; 
+private:
     std::string m_pattern;                // format event according to pattern
     std::vector<FormatItem::ptr> m_items; // list of base Formatitem to format each event
+    bool m_error = false;                 // determine current pattern is invalid
 };
 
 // Log ouput destination
@@ -179,17 +182,17 @@ class LogAppender {
 public:
     using ptr = std::shared_ptr<LogAppender>;
 
-    virtual void log (std::shared_ptr<Logger> logger, LogLevel::Level level, const LogEvent::ptr event) = 0; // output log
+    virtual void log(std::shared_ptr<Logger> logger, LogLevel::Level level, const LogEvent::ptr event) = 0; // output log
 
-    void setFormatter (LogFormatter::ptr val) { m_formatter = val; };
+    void setFormatter(LogFormatter::ptr val) { m_formatter = val; };
 
-    LogFormatter::ptr getFormatter () { return m_formatter; }
+    LogFormatter::ptr getFormatter() { return m_formatter; }
 
     void setLevel(LogLevel::Level level){ m_level = level; }
 
     LogLevel::Level getLevel() const {return m_level; }
 
-    virtual ~LogAppender (){};
+    virtual ~LogAppender(){};
 
 protected:
     LogFormatter::ptr m_formatter;                               // format output to destination
@@ -202,24 +205,31 @@ class Logger : public std::enable_shared_from_this<Logger> {
 public:
     using ptr = std::shared_ptr<Logger>;
 
-    Logger (const std::string& name = "root");
+    Logger(const std::string& name = "root");
 
-    void log (LogLevel::Level level, const LogEvent::ptr event); // use appender to output log
+    void log(LogLevel::Level level, const LogEvent::ptr event); // use appender to output log
 
-    void debug (LogEvent::ptr event);
-    void info (LogEvent::ptr event);
-    void warn (LogEvent::ptr event);
-    void error (LogEvent::ptr event);
-    void fatal (LogEvent::ptr event);
+    void debug(LogEvent::ptr event);
+    void info(LogEvent::ptr event);
+    void warn(LogEvent::ptr event);
+    void error(LogEvent::ptr event);
+    void fatal(LogEvent::ptr event);
 
-    void addAppender (LogAppender::ptr appender);
-    void delAppender (LogAppender::ptr appender);
+    void addAppender(LogAppender::ptr appender);
+    void delAppender(LogAppender::ptr appender);
 
-    const std::string& getName () const { return m_name; };
+    void clearAppenders();
 
-    LogLevel::Level getLevel () const { return m_level; };
+    const std::string& getName() const { return m_name; };
 
-    void setLevel (LogLevel::Level val) { m_level = val; };
+    LogLevel::Level getLevel() const { return m_level; };
+
+    void setLevel(LogLevel::Level val) { m_level = val; };
+
+    void setFormatter(const std::string& val);
+    void setFormatter(LogFormatter::ptr val);
+
+    LogFormatter::ptr getFormatter();
 
 private:
     std::string m_name;                         // logger name

@@ -337,7 +337,7 @@ public:
 
     const T getValue() const { return m_val; };
 
-    void setValue(const T& val) { 
+    void setValue(const T& val) { ;
         if (m_val == val) {
             return;
         }
@@ -352,7 +352,11 @@ public:
 
     std::string getTypeName() const override { return typeid(T).name(); };
 
-    void addListener(uint64_t key, onChangeCallBack cb) { m_cbs[key] = cb; }
+    void addListener(onChangeCallBack cb) { 
+        static uint64_t funcId = 0;
+        funcId++;
+        m_cbs[funcId] = cb; 
+    }
 
     void delListener(uint64_t key) { m_cbs.erase(key); }
 
@@ -372,7 +376,7 @@ private:
 // Manager to store all configuration parameters
 class ConfigMgr {
 public:
-    using ConfigArgMap = std::map<std::string, ConfigArgBase::ptr>;
+    using ConfigArgMap = std::unordered_map<std::string, ConfigArgBase::ptr>;
 
     // check if config para exists, if not, store into Mgr
     template<typename T>
@@ -385,8 +389,8 @@ public:
             throw std::invalid_argument(name) ;
         }
 
-        auto it = m_data.find(name);
-        if (it != m_data.end()) {
+        auto it = getData().find(name);
+        if (it != getData().end()) {
             auto tmp = std::dynamic_pointer_cast<ConfigArg<T>>(it->second);
             if (tmp) {
                 SERVER_LOG_INFO(SERVER_LOG_ROOT()) << "Lookup name = " << name << " exists ";
@@ -403,15 +407,15 @@ public:
 
         // store argument into mgr
         typename ConfigArg<T>::ptr nArg(new ConfigArg<T>(name, default_value, description));
-        m_data[name] = nArg;
+        getData()[name] = nArg;
         
         return nArg;
     };  
 
     template<typename T> 
     static typename ConfigArg<T>::ptr lookUp(const std::string& name){
-        auto it = m_data.find(name);
-        if (it == m_data.end()) {
+        auto it = getData().find(name);
+        if (it == getData().end()) {
             return nullptr;
         }
         
@@ -426,9 +430,11 @@ public:
     // look up the pointer to base arg
     static ConfigArgBase::ptr lookUpBase(const std::string& name);
 
-
 private:
-    static ConfigArgMap m_data;
+    static ConfigArgMap& getData() {
+        static ConfigArgMap m_data;
+        return m_data;
+    }
 };
 
 };

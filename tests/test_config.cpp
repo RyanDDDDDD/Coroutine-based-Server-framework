@@ -194,7 +194,7 @@ void test_class() {
     }   \
 
     // when calling loadFromYaml, it would call this callback and print new value
-    g_person->addListener(10, [](const Person& oldValue, const Person& newValue){
+    g_person->addListener([](const Person& oldValue, const Person& newValue){
         SERVER_LOG_INFO(SERVER_LOG_ROOT()) << "old value = " << oldValue.toString() << ", "
                                         << "new value = " << newValue.toString();
     });
@@ -202,7 +202,7 @@ void test_class() {
     XX_PM(g_person_map, "class.map before");
     SERVER_LOG_INFO(SERVER_LOG_ROOT()) << "before: " << g_person_vec_map->toString();
 
-    YAML::Node root = YAML::LoadFile("/home/ruidong/Desktop/ServerFramework/bin/config/test.yaml");
+    YAML::Node root = YAML::LoadFile("/home/ruidong/Desktop/ServerFramework/bin/config/config.yaml");
     Server::ConfigMgr::loadFromYaml(root);
 
     SERVER_LOG_INFO(SERVER_LOG_ROOT()) << "after: " << g_person->getValue().toString() << " - " << g_person->toString();
@@ -212,11 +212,19 @@ void test_class() {
 #undef XX_PM
 };
 
-int main() {
+void test_log() {
+    YAML::Node root = YAML::LoadFile("/home/ruidong/Desktop/ServerFramework/bin/config/test.yaml");
+    
+    Server::ConfigMgr::loadFromYaml(root);
+}
 
-    // test_yaml();
+int main() {
+    // SERVER_LOG_INFO(SERVER_LOG_ROOT()) << "main start" << std::endl;
+    test_yaml();
     // test_config();
-    test_class();
+    // test_class();
+    
+    // test_log();
 
     return 0;
 }

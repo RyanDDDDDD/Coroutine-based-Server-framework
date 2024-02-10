@@ -4,12 +4,10 @@
 
 namespace Server {
 
-ConfigMgr::ConfigArgMap ConfigMgr::m_data; 
-
 ConfigArgBase::ptr ConfigMgr::lookUpBase(const std::string& name) {
-    auto it = m_data.find(name);
+    auto it = getData().find(name);
 
-    return it == m_data.end() ? nullptr : it->second;
+    return it == getData().end() ? nullptr : it->second;
 };
 
 // "A.B", 10
@@ -39,7 +37,7 @@ static void listAllMember(const std::string& key,
 void ConfigMgr::loadFromYaml(const YAML::Node& root) {
     std::list<std::pair<std::string, const YAML::Node>> allNodes;
     listAllMember("", root, allNodes);
-
+    
     for (auto& i : allNodes) {
         std::string key = i.first;
         if (key.empty()) {
