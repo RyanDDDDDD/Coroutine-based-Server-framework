@@ -342,7 +342,7 @@ public:
             return;
         }
         
-        // process each callback
+        // process each callback when reading config from yaml
         for (auto& i : m_cbs) {
             i.second(m_val, val);
         }

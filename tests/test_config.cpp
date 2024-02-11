@@ -213,18 +213,33 @@ void test_class() {
 };
 
 void test_log() {
-    YAML::Node root = YAML::LoadFile("/home/ruidong/Desktop/ServerFramework/bin/config/test.yaml");
-    
+    static Server::Logger::ptr systemLog  = SERVER_LOG_NAME("system");
+    SERVER_LOG_INFO(systemLog) << "Hello system" << std::endl;
+    std::cout << Server::LoggerMgr::getInstance()->toYamlString() << std::endl;
+    YAML::Node root = YAML::LoadFile("/home/ruidong/Desktop/ServerFramework/bin/config/log.yaml");
     Server::ConfigMgr::loadFromYaml(root);
+
+    std::cout << "==============" << std::endl;
+    std::cout << Server::LoggerMgr::getInstance()->toYamlString() << std::endl;
+
+    std::cout << "==============" << std::endl;
+    std::cout << root << std::endl;
+
+    // If the two couts shows same results, this means the log.yaml 
+    // is successfully loaded into Logger mananger
+
+    SERVER_LOG_INFO(systemLog) << "hello system" << std::endl;
+    systemLog->setFormatter("%d - %m%n");
+    SERVER_LOG_INFO(systemLog) << "hello system" << std::endl;
 }
 
 int main() {
     // SERVER_LOG_INFO(SERVER_LOG_ROOT()) << "main start" << std::endl;
-    test_yaml();
+    // test_yaml();
     // test_config();
     // test_class();
     
-    // test_log();
+    test_log();
 
     return 0;
 }

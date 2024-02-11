@@ -154,3 +154,7 @@ __Note__: At this point, the key of map only support std::string type
 ## Testing
 
 We would use Catch2 for unit testing, and a high-resolution timer for performance testing
+
+## Model 
+
+![Model](ServerFramework.png)

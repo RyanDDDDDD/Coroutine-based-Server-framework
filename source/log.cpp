@@ -121,9 +121,14 @@ namespace Server {
 
     class DateTimeFormatItem : public LogFormatter::FormatItem {
     public:
-        DateTimeFormatItem(const std::string &format = "%Y-%m-%d %H:%M:%S") :m_format{format} {};
+        DateTimeFormatItem(const std::string &format = "%Y-%m-%d %H:%M:%S") :m_format{ format } {
+            if (m_format.empty()) {
+                m_format = "%Y-%m-%d %H:%M:%S";
+            }
+        };
 
         void format(std::ostream &os, std::shared_ptr<Logger> logger, LogLevel::Level level, LogEvent::ptr event) override {
+            
             // Converts given time since epoch into calendar time, expressed in local time
             struct tm tm;
             time_t time = event->getTime(); 
@@ -169,7 +174,7 @@ namespace Server {
 
     class StringFormatItem : public LogFormatter::FormatItem {
     public:
-        StringFormatItem(const std::string &str) : FormatItem(str), m_string(str){};
+        StringFormatItem(const std::string &str) : m_string(str){};
 
         void format(std::ostream &os, std::shared_ptr<Logger> logger, LogLevel::Level level, LogEvent::ptr event) override {
             os << m_string;
@@ -190,13 +195,15 @@ namespace Server {
 
     LogEvent::LogEvent(std::shared_ptr<Logger> logger, LogLevel::Level level,
                         const char* file, int32_t line, uint32_t elapse, 
-                        uint32_t threadId,uint32_t fiberId, uint64_t time)
+                        uint32_t threadId,uint32_t fiberId, uint64_t time,
+                        const std::string& threadName)
         : m_file{ file },
         m_line{ line },
         m_elapse{ elapse },
         m_threadId{ threadId },
         m_fiberId{ fiberId },
         m_time{ time },
+        m_threadName{ threadName },
         m_logger{ logger },
         m_level{ level }
     {};
@@ -225,11 +232,6 @@ namespace Server {
         : m_name{ name },
         m_level{LogLevel::Level::DEBUG} {
         m_formatter.reset(new LogFormatter("%d{%Y-%m-%d %H:%M:%S}%T%t%T%F%T[%p]%T[%c]%f:%l%T%m%n"));
-        
-        if (name == "root") {
-            m_appenders.push_back(StdoutLogAppender::ptr(new StdoutLogAppender()));
-        }
-            
     };
 
     void Logger::setFormatter(const std::string& val) {
@@ -242,11 +244,41 @@ namespace Server {
             return;
         }
 
-        m_formatter.reset(new Server::LogFormatter(val));
+        setFormatter(newVal);
     };
 
     void Logger::setFormatter(LogFormatter::ptr val) {
         m_formatter = val;
+
+        for (auto& i : m_appenders) {
+            // if the appender doesnt contain formatter, assign it with logger' formatter
+            if (!i->m_hasFormatter){
+                i->m_formatter = m_formatter;
+            }
+        }
+    };
+
+    // convert Logger member to yaml style string
+    std::string Logger::toYamlString() {
+        YAML::Node node;
+        node["name"] = m_name;
+        
+        if(m_level != LogLevel::Level::UNKNOWN) {
+            node["level"] = LogLevel::ToString(m_level);
+        }
+
+        if (m_formatter) {
+            node["formatter"] = m_formatter->getPattern();
+        }
+
+        for (auto& i : m_appenders) {
+            node["appenders"].push_back(YAML::Load(i->toYamlString()));
+        }
+
+        std::stringstream ss;
+        ss << node;
+        
+        return ss.str();
     };
 
     LogFormatter::ptr Logger::getFormatter() {
@@ -256,7 +288,8 @@ namespace Server {
     void Logger::addAppender(LogAppender::ptr appender) {
         // if the formatter is not set, assign the logger formatter to appender
         if (!appender -> getFormatter()) {          
-            appender -> setFormatter(m_formatter);
+            appender->m_formatter = m_formatter;
+            // appender->setFormatter(m_formatter);
         }
 
         m_appenders.push_back(appender);
@@ -310,8 +343,39 @@ namespace Server {
         log(LogLevel::Level::FATAL, event);
     };
 
+    void LogAppender::setFormatter(LogFormatter::ptr val) {
+        m_formatter = val;
+        if (m_formatter) {
+            m_hasFormatter = true;
+        } else {
+            m_hasFormatter = false;
+        }
+    }
+
+    LogFormatter::ptr LogAppender::getFormatter() {
+        return m_formatter;
+    }
+
     FileLogAppender::FileLogAppender (const std::string& filename): m_filename{ filename } {
         reopen();
+    };
+
+    std::string FileLogAppender::toYamlString() {
+        YAML::Node node;
+        node["type"] = "FileLogAppender";
+        node["file"] = m_filename;
+        
+        if (m_level != LogLevel::Level::UNKNOWN) {
+            node["level"] = LogLevel::ToString(m_level);
+        }
+
+        if (m_hasFormatter && m_formatter) {
+            node["formatter"] = m_formatter->getPattern();
+        }
+
+        std::stringstream ss;
+        ss << node;
+        return ss.str();
     };
 
     bool FileLogAppender::reopen() {
@@ -325,8 +389,25 @@ namespace Server {
 
     void StdoutLogAppender::log(Logger::ptr logger, LogLevel::Level level, LogEvent::ptr event) {
         if (level >= m_level) {
-            std::cout << m_formatter->format(logger, level, event);
+            m_formatter->format(std::cout, logger, level, event);
         }
+    };
+
+    std::string StdoutLogAppender::toYamlString() {
+        YAML::Node node;
+        node["type"] = "StdoutLogAppender";
+
+        if (m_level != LogLevel::Level::UNKNOWN) {
+            node["level"] = LogLevel::ToString(m_level);
+        }
+
+        if (m_hasFormatter && m_formatter) {
+            node["formatter"] = m_formatter->getPattern();
+        }
+
+        std::stringstream ss;
+        ss << node;
+        return ss.str();
     };
 
     void FileLogAppender::log(Logger::ptr logger, LogLevel::Level level, LogEvent::ptr event) {
@@ -340,6 +421,7 @@ namespace Server {
     // stdout formatter
     std::string LogFormatter::format(std::shared_ptr<Logger> logger, LogLevel::Level level, LogEvent::ptr event) {
         std::stringstream ss;
+        
         for (auto &i : m_items) { // use FormatItem to format event and store into ss
             i->format(ss, logger, level, event); 
         }
@@ -483,7 +565,7 @@ LoggerManager::LoggerManager() {
     m_root.reset(new Logger);
     m_root->addAppender(LogAppender::ptr(new StdoutLogAppender));   // default appender for logger
     
-    m_loggers[m_root->m_name] = m_root;
+    m_loggers[m_root->m_name] = m_root;                             // store default logger
 
     init();
 };
@@ -572,6 +654,7 @@ public:
         }
         
         if (node["appenders"].IsDefined()) {
+            // add each appender into logDefine
             for (size_t x = 0; x < node["appenders"].size(); ++x) {
                 auto a = node["appenders"][x];
                 if (!a["type"].IsDefined()) {
@@ -599,9 +682,9 @@ public:
                         lad.formatter = a["formatter"].as<std::string>();
                     }
                 } else {
-                    std::cout << "Log config error: appender type is invalid, "  << a
-
+                    std::cout << "Log config error: appender type is invalid, " << a
                             << std::endl;
+                    continue;
                 }
                 
                 ld.appenders.push_back(lad);
@@ -639,6 +722,10 @@ public:
                 na["type"] = "StdoutLogAppender";
             }
         
+            if (a.level != LogLevel::Level::UNKNOWN) {
+                na["level"] = LogLevel::ToString(a.level);
+            }
+
             if (!a.formatter.empty()) {
                 na["formatter"] = a.formatter;
             }
@@ -652,10 +739,11 @@ public:
     };
 };
 
+// define loggers configuration before main()
 Server::ConfigArg<std::set<LogDefine>>::ptr g_log_defines = 
     Server::ConfigMgr::lookUp("logs", std::set<LogDefine>(), "logs config");
 
-// intialize before main() to config logger, using config.yaml
+// intialize before main() to config logger, using logs.yaml
 struct LogIniter {
     LogIniter() {
         g_log_defines->addListener([](const std::set<LogDefine>& oldValue, 
@@ -668,19 +756,24 @@ struct LogIniter {
                 auto it = oldValue.find(i);
                 Server::Logger::ptr logger;
                 if (it == oldValue.end()) {
-                    // new logger
+                    // new logger, create an new logger setup in logger manager
                     logger = SERVER_LOG_NAME(i.name);
-                } else if (i != *it) {
-                    // logger is modified
-                    logger = SERVER_LOG_NAME(i.name);
+                } else {
+                    if (i != *it) {
+                        // logger is modified, retrieve it from logger manager and modify its content
+                        logger = SERVER_LOG_NAME(i.name);
+                    } else {
+                        continue;
+                    }
                 }
-
+                
                 logger->setLevel(i.level);
                 if (!i.formatter.empty()) {
                     // new formatter in config.yaml
                     logger->setFormatter(i.formatter);
                 }
-
+                
+                // reset all appenders
                 logger->clearAppenders();
                 for (auto& a : i.appenders) {
                     Server::LogAppender::ptr ap;
@@ -724,5 +817,16 @@ static LogIniter __log_init;
 void LoggerManager::init() {
 
 };
+
+std::string LoggerManager::toYamlString() {
+    YAML::Node node;
+    for (auto& i : m_loggers) {
+        node.push_back(YAML::Load(i.second->toYamlString()));
+    }
+
+    std::stringstream ss;
+    ss << node;
+    return ss.str();
+}
 
 }; // namespace Server
