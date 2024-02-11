@@ -16,13 +16,13 @@
 #include "util.hpp"
 #include "singleton.hpp"
 
-// retrive event input stream from logger
+// retrieve event input stream from logger
 #define SERVER_LOG_LEVEL(logger, level) \
     if (logger->getLevel() <= level) \
         Server::LogEventWrap(   \
             Server::LogEvent::ptr(new Server::LogEvent( \
             logger, level, __FILE__, __LINE__, 0, Server::getThreadId(), \
-            Server::getFiberId(), time(0)))).getSS()
+            Server::getFiberId(), time(0), std::string("")))).getSS()
 
 #define SERVER_LOG_DEBUG(logger) SERVER_LOG_LEVEL(logger, Server::LogLevel::Level::DEBUG)
 #define SERVER_LOG_INFO(logger) SERVER_LOG_LEVEL(logger, Server::LogLevel::Level::INFO)
@@ -52,7 +52,7 @@
 namespace Server {
 
 class Logger;
-class LogFormatter;
+class LoggerManager;
 
 // Log (message) Level
 class LogLevel {
@@ -81,7 +81,8 @@ public:
     
     LogEvent(std::shared_ptr<Logger> logger, LogLevel::Level level,
             const char* file, int32_t line, uint32_t elapse, 
-            uint32_t threadId,uint32_t fiberId, uint64_t time);
+            uint32_t threadId,uint32_t fiberId, uint64_t time,
+            const std::string& threadName);
 
     const char* getFile () const { return m_file; };
 
@@ -103,6 +104,8 @@ public:
 
     std::stringstream& getSS() { return m_ss; };
 
+    const std::string& getThreadName() const { return m_threadName; };
+
     // use user-defined formatter to format event
     void format(const char* fmt, ...);
     void format(const char* fmt, va_list al);
@@ -114,10 +117,9 @@ private:
     uint32_t m_threadId   = 0;       // thread Id
     uint32_t m_fiberId    = 0;       // coroutine Id
     uint64_t m_time       = 0;       // time stamp
+    std::string m_threadName;        // Thread name
     std::stringstream m_ss;          // input stream for user input
-
     std::shared_ptr<Logger> m_logger; // ptr to the logger which format current event
-
     LogLevel::Level m_level;          // event level
 };
 
@@ -157,7 +159,7 @@ public:
     public:
         using ptr = std::shared_ptr<FormatItem>;
 
-        FormatItem (const std::string& fmt = "") {};
+        // FormatItem (const std::string& fmt = "") {};
 
         virtual ~FormatItem (){};
 
@@ -168,62 +170,80 @@ public:
     };
     
     void init ();                         // config formatterItem with the given pattern(m_pattern)
-
+    bool isError() const { return m_error; }; 
+    const std::string getPattern() const { return m_pattern; }
+private:
     std::string m_pattern;                // format event according to pattern
     std::vector<FormatItem::ptr> m_items; // list of base Formatitem to format each event
+    bool m_error = false;                 // determine current pattern is invalid
 };
 
 // Log ouput destination
 class LogAppender {
+friend class Logger;
 public:
     using ptr = std::shared_ptr<LogAppender>;
 
-    virtual void log (std::shared_ptr<Logger> logger, LogLevel::Level level, const LogEvent::ptr event) = 0; // output log
+    virtual void log(std::shared_ptr<Logger> logger, LogLevel::Level level, const LogEvent::ptr event) = 0; // output log
 
-    void setFormatter (LogFormatter::ptr val) { m_formatter = val; };
+    virtual std::string toYamlString() = 0;
 
-    LogFormatter::ptr getFormatter () { return m_formatter; }
+    void setFormatter(LogFormatter::ptr val);
+
+    LogFormatter::ptr getFormatter();
 
     void setLevel(LogLevel::Level level){ m_level = level; }
 
     LogLevel::Level getLevel() const {return m_level; }
 
-    virtual ~LogAppender (){};
+    virtual ~LogAppender(){};
 
 protected:
-    LogFormatter::ptr m_formatter;                               // format output to destination
-    LogLevel::Level m_level = LogLevel::Level::DEBUG;            // Minimum level of Log the Appender can process
+    LogFormatter::ptr m_formatter;                              // format output to destination
+    LogLevel::Level m_level = LogLevel::Level::DEBUG;           // Minimum level of Log the Appender can process
+    bool m_hasFormatter = false;                                // Appender has its own formatter, not using logger formatter
 };
 
 // Logger
 class Logger : public std::enable_shared_from_this<Logger> {
+    friend class LoggerManager;
 public:
     using ptr = std::shared_ptr<Logger>;
 
-    Logger (const std::string& name = "root");
+    Logger(const std::string& name = "root");
 
-    void log (LogLevel::Level level, const LogEvent::ptr event); // use appender to output log
+    void log(LogLevel::Level level, const LogEvent::ptr event); // use appender to output log
 
-    void debug (LogEvent::ptr event);
-    void info (LogEvent::ptr event);
-    void warn (LogEvent::ptr event);
-    void error (LogEvent::ptr event);
-    void fatal (LogEvent::ptr event);
+    void debug(LogEvent::ptr event);
+    void info(LogEvent::ptr event);
+    void warn(LogEvent::ptr event);
+    void error(LogEvent::ptr event);
+    void fatal(LogEvent::ptr event);
 
-    void addAppender (LogAppender::ptr appender);
-    void delAppender (LogAppender::ptr appender);
+    void addAppender(LogAppender::ptr appender);
+    void delAppender(LogAppender::ptr appender);
 
-    const std::string& getName () const { return m_name; };
+    void clearAppenders();
 
-    LogLevel::Level getLevel () const { return m_level; };
+    const std::string& getName() const { return m_name; };
 
-    void setLevel (LogLevel::Level val) { m_level = val; };
+    LogLevel::Level getLevel() const { return m_level; };
+
+    void setLevel(LogLevel::Level val) { m_level = val; };
+
+    void setFormatter(const std::string& val);
+    void setFormatter(LogFormatter::ptr val);
+
+    LogFormatter::ptr getFormatter();
+
+    std::string toYamlString();
 
 private:
     std::string m_name;                         // logger name
     LogLevel::Level m_level;                    // minimum Level of Log which can be processed by Logger
     std::list<LogAppender::ptr> m_appenders;    // a list of appenders to output log, we can customize appenders to output to different position
     LogFormatter::ptr m_formatter;              // when the added formatter is not set properly, assign logger formatter to it
+    Logger::ptr m_root;
 };
 
 // Output to console
@@ -231,6 +251,7 @@ class StdoutLogAppender : public LogAppender {
 public:
     using ptr = std::shared_ptr<StdoutLogAppender>;
     virtual void log (Logger::ptr logger, LogLevel::Level level, LogEvent::ptr event) override;
+    virtual std::string toYamlString() override;
 };
 
 // Output to file
@@ -239,13 +260,15 @@ public:
     FileLogAppender (const std::string& filename);
 
     virtual void log (Logger::ptr logger, LogLevel::Level level, LogEvent::ptr event) override;
-
+    virtual std::string toYamlString() override;
     bool reopen ();             // if the output file is opened, close and open it
 
 private:
     std::string m_filename;     // opened file
     std::ofstream m_filestream; // file stream binded to opened file
 };
+
+/* add more customized appender below */
 
 // Mangger to store all loggers, we can retrieve logger from Mangager
 class LoggerManager {
@@ -261,7 +284,10 @@ public:
     // store an new loger into manger
     bool storeLogger(const std::string label, const Logger::ptr logger);
 
+    // initialize setting using configuration module
     void init();
+
+    std::string toYamlString ();
 
 private:
     std::map<std::string, Logger::ptr> m_loggers;

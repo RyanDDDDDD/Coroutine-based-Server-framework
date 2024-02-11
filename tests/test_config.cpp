@@ -55,7 +55,7 @@ void print_yaml(const YAML::Node& node, int level) {
 };
 
 void test_yaml() {
-    YAML::Node root = YAML::LoadFile("config/config.yaml");
+    YAML::Node root = YAML::LoadFile("/home/ruidong/Desktop/ServerFramework/bin/config/test.yaml");
     print_yaml(root, 0);
 
     SERVER_LOG_INFO(SERVER_LOG_ROOT()) << root.Scalar();
@@ -91,7 +91,7 @@ void test_config() {
     XX_M(g_str_int_map_value_config, int_map, before);
     XX_M(g_str_int_unordered_map_value_config, str_int_unordered_map, before);
 
-    YAML::Node root = YAML::LoadFile("config/config.yaml");
+    YAML::Node root = YAML::LoadFile("/home/ruidong/Desktop/ServerFramework/bin/config/test.yaml");
     Server::ConfigMgr::loadFromYaml(root);
 
     SERVER_LOG_INFO(SERVER_LOG_ROOT()) << "after: " << g_int_value_config->getValue();
@@ -114,6 +114,7 @@ public:
     int m_age = 0;
     bool m_sex = false;
 
+    // output class member  
     std::string toString() const {
         std::stringstream ss;
         ss << "[Person name = "  << m_name
@@ -170,6 +171,7 @@ public:
 };
 }
 
+// xxx.yyy.zzz: define the structure level of yaml arguments and store each key-value into Mgr
 Server::ConfigArg<Person>::ptr g_person = 
     Server::ConfigMgr::lookUp("class.person", Person(), "system admin");
 
@@ -192,7 +194,7 @@ void test_class() {
     }   \
 
     // when calling loadFromYaml, it would call this callback and print new value
-    g_person->addListener(10, [](const Person& oldValue, const Person& newValue){
+    g_person->addListener([](const Person& oldValue, const Person& newValue){
         SERVER_LOG_INFO(SERVER_LOG_ROOT()) << "old value = " << oldValue.toString() << ", "
                                         << "new value = " << newValue.toString();
     });
@@ -206,14 +208,38 @@ void test_class() {
     SERVER_LOG_INFO(SERVER_LOG_ROOT()) << "after: " << g_person->getValue().toString() << " - " << g_person->toString();
     XX_PM(g_person_map, "class.map after");
     SERVER_LOG_INFO(SERVER_LOG_ROOT()) << "after: " << g_person_vec_map->toString();
+
 #undef XX_PM
 };
 
-int main() {
+void test_log() {
+    static Server::Logger::ptr systemLog  = SERVER_LOG_NAME("system");
+    SERVER_LOG_INFO(systemLog) << "Hello system" << std::endl;
+    std::cout << Server::LoggerMgr::getInstance()->toYamlString() << std::endl;
+    YAML::Node root = YAML::LoadFile("/home/ruidong/Desktop/ServerFramework/bin/config/log.yaml");
+    Server::ConfigMgr::loadFromYaml(root);
 
+    std::cout << "==============" << std::endl;
+    std::cout << Server::LoggerMgr::getInstance()->toYamlString() << std::endl;
+
+    std::cout << "==============" << std::endl;
+    std::cout << root << std::endl;
+
+    // If the two couts shows same results, this means the log.yaml 
+    // is successfully loaded into Logger mananger
+
+    SERVER_LOG_INFO(systemLog) << "hello system" << std::endl;
+    systemLog->setFormatter("%d - %m%n");
+    SERVER_LOG_INFO(systemLog) << "hello system" << std::endl;
+}
+
+int main() {
+    // SERVER_LOG_INFO(SERVER_LOG_ROOT()) << "main start" << std::endl;
     // test_yaml();
     // test_config();
-    test_class();
+    // test_class();
+    
+    test_log();
 
     return 0;
 }

@@ -73,7 +73,7 @@ The logging format we use (refer to [Log4j TTCC](https://en.wikipedia.org/wiki/L
 3. multi-log separation: enable logging same info with different output destination 
 
 3. free configuration of log such as time, thread ID, thread name, log level, log name, file name, line number.
-
+ 
 ----- 
 #### Logging Level
 Logging level indicate serverity or importance of the messages logged by the application. We defined 5 level in our module.
@@ -91,7 +91,10 @@ Logging level indicate serverity or importance of the messages logged by the app
 -----
 ### Configuration Module
 
-Configuration Module is used to store all system configuration. We use ["Convention over Configuration"](https://facilethings.com/blog/en/convention-over-configuration) principle to design the module, and avoid unnecessary pre-configuration.
+Configuration Module is used to store all system configuration (e.g logger)
+
+
+We use ["Convention over Configuration"](https://facilethings.com/blog/en/convention-over-configuration) principle to design the module, and avoid unnecessary pre-configuration.
 
 __Module Features__:
 
@@ -115,7 +118,32 @@ for (size_t i = 0; i < node.size(); ++i) {
 
 4. Support nontification event when configuration is changed : Once configuration in yaml file is changed, we can detect and update during run time via callback ([Observer pattern](https://refactoring.guru/design-patterns/observer)).
 
+5. Intergrate logger module with configuration module, to support user customized configuration before lanuching the application
+
+```yaml
+logs:
+    - name: root
+      level: (debug, info,warn,error,fatal)
+      formatter: '%d%T%p%T%t%m%n'
+      appender:
+        - type: (StdoutLogAppender, FileLogAppender)
+          level: (debug,info,warn,error,fatal)
+          file: /logs/xxx.log
+```
+```cpp
+Server::Logger::ptr g_logger = Server::LoggerMgr::getInstance()->getLogger(name); //Server::Logger::ptr g_logger = SERVER_LOG_NAME(name)
+SERVER_LOG_INFO(g_logger) << "xxxx log";
+```
+
+```cpp
+static Logger::ptr g_log = SERVER_LOG_NAME("system");
+// when appenders of logger is empty, use root(default) for output
+```
+
+
 __Note__: At this point, the key of map only support std::string type
+
+
 
 ### Coroutine Module
 
@@ -126,3 +154,7 @@ __Note__: At this point, the key of map only support std::string type
 ## Testing
 
 We would use Catch2 for unit testing, and a high-resolution timer for performance testing
+
+## Model 
+
+![Model](ServerFramework.png)
