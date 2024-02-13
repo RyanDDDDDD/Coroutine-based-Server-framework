@@ -230,12 +230,14 @@ namespace Server {
 
     Logger::Logger (const std::string& name)
         : m_name{ name },
-        m_level{LogLevel::Level::DEBUG} {
-        m_formatter.reset(new LogFormatter("%d{%Y-%m-%d %H:%M:%S}%T%t%T%F%T[%p]%T[%c]%f:%l%T%m%n"));
+        m_level{LogLevel::Level::DEBUG},
+        m_formatter{std::make_shared<LogFormatter>("%d{%Y-%m-%d %H:%M:%S}%T%t%T%F%T[%p]%T[%c]%T%f:%l%T%m%n")} {
+        // m_formatter.reset(new LogFormatter("%d{%Y-%m-%d %H:%M:%S}%T%t%T%F%T[%p]%T[%c]%T%f:%l%T%m%n"));
+
     };
 
     void Logger::setFormatter(const std::string& val) {
-        Server::LogFormatter::ptr newVal(new Server::LogFormatter(val));
+        Server::LogFormatter::ptr newVal(std::make_shared<Server::LogFormatter>(val));
         // this is an error pattern
         if (newVal->isError()) {
             std::cout << "Logger setFormatter failed, name = " << m_name
@@ -520,7 +522,7 @@ namespace Server {
         static std::map<std::string, std::function<FormatItem::ptr(const std::string& str)>> s_format_items = {
 
 #define XX(str, C) \
-    {#str,[](const std::string &fmt) { return FormatItem::ptr(new C(fmt)); }}
+    {#str,[](const std::string &fmt) { return FormatItem::ptr(std::make_shared<C>(fmt)); }}
 
             XX(m, MessageFormatItem),   // %m --- message body
             XX(p, LevelFormatItem),     // %p --- priority level
@@ -540,14 +542,14 @@ namespace Server {
         // start parsing the split string and convert into the given format
         for (auto &i : vec) {
             if (std::get<2>(i) == 0) { // raw string
-                m_items.push_back(FormatItem::ptr(new StringFormatItem(std::get<0>(i))));   
+                m_items.push_back(FormatItem::ptr(std::make_shared<StringFormatItem>(std::get<0>(i))));   
             }
             else {
                 auto it = s_format_items.find(std::get<0>(i)); // current string contains pattern
 
                 if (it == s_format_items.end()) {               // error pattern, which is <<pattern_error>>
                     m_items.push_back(FormatItem::ptr(
-                        new StringFormatItem("<<error_format %" + std::get<0>(i) + ">>")));
+                        std::make_shared<StringFormatItem>("<<error_format %" + std::get<0>(i) + ">>")));
                     m_error = true;
                 }
                 else {
@@ -562,8 +564,10 @@ namespace Server {
     }; 
 
 LoggerManager::LoggerManager() {
-    m_root.reset(new Logger);
-    m_root->addAppender(LogAppender::ptr(new StdoutLogAppender));   // default appender for logger
+    // if (m_root == nullptr)  {std::cout << "root is null" << std::endl;} else {std::cout << "root is not null" << std::endl;};
+    // m_root.reset(new Logger);
+    m_root = std::make_shared<Logger>();
+    m_root->addAppender(LogAppender::ptr(std::make_shared<StdoutLogAppender>()));   // default appender for logger
     
     m_loggers[m_root->m_name] = m_root;                             // store default logger
 
@@ -578,7 +582,7 @@ Logger::ptr LoggerManager::getLogger(const std::string& name){
     }
 
     // create and store an new logger with name
-    Logger::ptr logger(new Logger(name));
+    Logger::ptr logger = std::make_shared<Logger>(name);
     logger->m_root = m_root;
     m_loggers[name] = logger;
 
@@ -779,14 +783,14 @@ struct LogIniter {
                     Server::LogAppender::ptr ap;
 
                     if (a.type == 1) {
-                        ap.reset(new FileLogAppender(a.file));
+                        ap.reset(std::make_shared<FileLogAppender>(a.file).get());
                     } else if (a.type == 2) {
-                        ap.reset(new StdoutLogAppender);                    
+                        ap.reset(std::make_shared<StdoutLogAppender>().get());                    
                     }
 
                     ap->setLevel(a.level);
                     if (!a.formatter.empty()) {
-                        LogFormatter::ptr fmt(new LogFormatter(a.formatter));
+                        LogFormatter::ptr fmt(std::make_shared<LogFormatter>(a.formatter));
                         if (!fmt->isError()) {
                             ap->setFormatter(fmt);
                         } else {

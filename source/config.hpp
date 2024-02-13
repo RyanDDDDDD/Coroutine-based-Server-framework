@@ -303,10 +303,10 @@ public:
     using onChangeCallBack = std::function<void (const T& oldValue, const T& newValue)>;
 
     ConfigArg(const std::string& name,
-            const T& default_value,
+            const T& defaultValue,
             const std::string& description = "") 
             : ConfigArgBase(name, description),
-            m_val(default_value) {
+            m_val{ defaultValue } {
     };
 
     // convert to argument into yaml string format 
@@ -406,7 +406,7 @@ public:
 
 
         // store argument into mgr
-        typename ConfigArg<T>::ptr nArg(new ConfigArg<T>(name, default_value, description));
+        typename ConfigArg<T>::ptr nArg = std::make_shared<ConfigArg<T>>(name, default_value, description);
         getData()[name] = nArg;
         
         return nArg;

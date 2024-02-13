@@ -140,10 +140,10 @@ static Logger::ptr g_log = SERVER_LOG_NAME("system");
 // when appenders of logger is empty, use root(default) for output
 ```
 
-
 __Note__: At this point, the key of map only support std::string type
 
-
+### Thread Module
+Encapsulate common functionalities of C++ 11 thread library, implement thread/semaphore/mutex/RWMutex/Spinlock. 
 
 ### Coroutine Module
 
