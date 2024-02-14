@@ -5,6 +5,8 @@
 namespace Server {
 
 ConfigArgBase::ptr ConfigMgr::lookUpBase(const std::string& name) {
+    RWMutexType::ReadLock lock(getMutex());
+    
     auto it = getData().find(name);
 
     return it == getData().end() ? nullptr : it->second;
@@ -57,7 +59,15 @@ void ConfigMgr::loadFromYaml(const YAML::Node& root) {
             }
         }
     }
-
 };
+
+void ConfigMgr::Visit(std::function<void(ConfigArgBase::ptr)> cb) {
+    RWMutex::ReadLock lock(getMutex());
+
+    ConfigArgMap& m = getData();
+    for (auto it = m.begin(); it != m.end(); ++it) {
+        cb(it->second);
+    }
+}
 
 }

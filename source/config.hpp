@@ -15,6 +15,8 @@
 #include <functional>
 
 #include "log.hpp"
+#include "thread.hpp"
+#include "util.hpp"
 
 namespace Server {
 
@@ -301,6 +303,7 @@ class ConfigArg : public ConfigArgBase {
 public:
     using ptr = std::shared_ptr<ConfigArg>;
     using onChangeCallBack = std::function<void (const T& oldValue, const T& newValue)>;
+    using RWMutexType = RWMutex;
 
     ConfigArg(const std::string& name,
             const T& defaultValue,
@@ -312,6 +315,7 @@ public:
     // convert to argument into yaml string format 
     std::string toString() override {
         try {
+            RWMutex::ReadLock lock(m_mutex);
             return ToStr()(m_val);
         } catch (std::exception& e) {
             SERVER_LOG_ERROR(SERVER_LOG_ROOT()) << "ConfigArg::toString() exception " 
@@ -335,55 +339,74 @@ public:
         return true;
     };
 
-    const T getValue() const { return m_val; };
+    const T getValue() { 
+        RWMutexType::ReadLock lock(m_mutex);
+        return m_val; 
+    };
 
     void setValue(const T& val) { ;
-        if (m_val == val) {
-            return;
-        }
-        
-        // process each callback when reading config from yaml
-        for (auto& i : m_cbs) {
-            i.second(m_val, val);
+        {
+            RWMutex::ReadLock lock(m_mutex);    
+            if (m_val == val) {
+                return;
+            }
+            
+            // process each callback when reading config from yaml
+            for (auto& i : m_cbs) {
+                i.second(m_val, val);
+            }
         }
 
+        RWMutex::WriteLock lock(m_mutex);
         m_val = val;
     };
 
     std::string getTypeName() const override { return typeid(T).name(); };
 
-    void addListener(onChangeCallBack cb) { 
+    uint64_t addListener(onChangeCallBack cb) { 
+        RWMutex::ReadLock lock(m_mutex);
         static uint64_t funcId = 0;
         funcId++;
         m_cbs[funcId] = cb; 
+        return funcId;
     }
 
-    void delListener(uint64_t key) { m_cbs.erase(key); }
+    void delListener(uint64_t key) { 
+        RWMutex::ReadLock lock(m_mutex);
+        m_cbs.erase(key); 
+    }
 
     onChangeCallBack getListener(uint64_t key) {
+        RWMutex::ReadLock lock(m_mutex);
         auto it = m_cbs.find(key);
         return it == m_cbs.end() ? nullptr : it->second;
     }
 
-    void clearListener() { m_cbs.clear(); }
+    void clearListener() { 
+        RWMutex::ReadLock lock(m_mutex);
+        m_cbs.clear(); 
+    }
 
 private:
     T m_val;    // argument could be differnt types
 
     std::map<uint64_t, onChangeCallBack> m_cbs;
+
+    RWMutexType m_mutex;
 };
 
 // Manager to store all configuration parameters
 class ConfigMgr {
 public:
     using ConfigArgMap = std::unordered_map<std::string, ConfigArgBase::ptr>;
-
+    using RWMutexType = RWMutex;
     // check if config para exists, if not, store into Mgr
     template<typename T>
     static typename ConfigArg<T>::ptr lookUp(const std::string& name, 
                                             const T& default_value, 
                                             const std::string& description = "") 
     {             
+        RWMutex::ReadLock lock(getMutex());
         if (name.find_first_not_of("abcdefghijklmnopqrstuvwxyz._0123456789") != std::string::npos) {
             SERVER_LOG_ERROR(SERVER_LOG_ROOT()) << "requestted name is invalid " << name;
             throw std::invalid_argument(name) ;
@@ -414,6 +437,7 @@ public:
 
     template<typename T> 
     static typename ConfigArg<T>::ptr lookUp(const std::string& name){
+        RWMutex::ReadLock lock(getMutex());
         auto it = getData().find(name);
         if (it == getData().end()) {
             return nullptr;
@@ -430,11 +454,18 @@ public:
     // look up the pointer to base arg
     static ConfigArgBase::ptr lookUpBase(const std::string& name);
 
+    // callback all configuration 
+    static void Visit(std::function<void(ConfigArgBase::ptr)> cb);
 private:
     static ConfigArgMap& getData() {
         static ConfigArgMap m_data;
         return m_data;
-    }
+    };
+
+    static RWMutexType& getMutex() {
+        static RWMutexType s_mutex;
+        return s_mutex;
+    };
 };
 
 };

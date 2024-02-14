@@ -9,6 +9,7 @@
 
 namespace Server {
 
+// lock guard for mutex
 template<typename T>
 class ScopedLock {
 public:
@@ -39,6 +40,7 @@ private:
     bool m_locked;
 };
 
+// lock guard for read_mutex
 template<typename T>
 class ScopedRdLock {
 public:
@@ -69,6 +71,7 @@ private:
     bool m_locked;
 };
 
+// lock guard for write mutex
 template<typename T>
 class ScopedWriteLock {
 public:
@@ -99,6 +102,39 @@ private:
     bool m_locked;
 };
 
+class Mutex {
+public:
+    using Lock = ScopedLock<Mutex>;
+    Mutex() {
+        pthread_mutex_init(&m_mutex, nullptr);
+    }
+
+    ~Mutex() {
+        pthread_mutex_destroy(&m_mutex);
+    }
+
+    void lock() {
+        pthread_mutex_lock(&m_mutex);
+    }
+
+    void unlock() {
+        pthread_mutex_unlock(&m_mutex);
+    }
+
+private:
+    pthread_mutex_t m_mutex;
+};
+
+class NullMutex {
+public:
+    using Lock = ScopedLock<Mutex>;
+
+    NullMutex() {};
+    ~NullMutex() {};
+
+    void lock() {};
+    void unlock() {}
+};
 
 class RWMutex {
 public:
@@ -128,6 +164,18 @@ private:
     pthread_rwlock_t m_lock;
 };
 
+class NullRWMutex {
+public:
+    using Lock = ScopedLock<Mutex>;
+
+    NullRWMutex() {};
+    ~NullRWMutex() {};
+
+    void rdlock() {};
+    void wrlock() {};
+    void unlock() {};
+};
+
 class Semaphore {
 public:
     Semaphore(uint32_t count = 0);
@@ -143,6 +191,52 @@ private:
     
 private:
     sem_t m_semaphore;  
+};
+
+class Spinlock {
+public:
+    using Lock = ScopedLock<Spinlock>;
+    
+    Spinlock() {
+        pthread_spin_init(&m_mutex, 0);
+    }
+    
+    ~Spinlock() {
+        pthread_spin_destroy(&m_mutex);
+    }
+
+    void lock() {
+        pthread_spin_lock(&m_mutex);
+    }
+
+    void unlock() {
+        pthread_spin_unlock(&m_mutex);
+    }
+private:
+    pthread_spinlock_t m_mutex;
+};
+
+class CASLock {
+public:
+    using Lock = ScopedRdLock<CASLock>;
+    CASLock() {
+        m_mutex.clear();
+    };
+
+    ~CASLock() {
+
+    };
+
+    void lock() {
+        while(std::atomic_flag_test_and_set_explicit(&m_mutex, std::memory_order_acquire)) {}
+    };
+
+    void unlock() {
+        std::atomic_flag_clear_explicit(&m_mutex, std::memory_order_release);
+    };
+
+private:
+    volatile std::atomic_flag m_mutex;
 };
 
 class Thread {

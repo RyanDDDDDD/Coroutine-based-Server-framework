@@ -15,6 +15,7 @@
 
 #include "util.hpp"
 #include "singleton.hpp"
+#include "thread.hpp"
 
 // retrieve event input stream from logger
 #define SERVER_LOG_LEVEL(logger, level) \
@@ -47,7 +48,6 @@
 #define SERVER_LOG_ROOT() Server::LoggerMgr::getInstance()->getRoot()
 // Get logger with specific name 
 #define SERVER_LOG_NAME(name) Server::LoggerMgr::getInstance()->getLogger(name)
-
 
 namespace Server {
 
@@ -183,17 +183,23 @@ class LogAppender {
 friend class Logger;
 public:
     using ptr = std::shared_ptr<LogAppender>;
-
+    using MutexType = Spinlock;
+    
     virtual void log(std::shared_ptr<Logger> logger, LogLevel::Level level, const LogEvent::ptr event) = 0; // output log
 
+    // output to yaml string
     virtual std::string toYamlString() = 0;
-
+    
+    // set new formatter
     void setFormatter(LogFormatter::ptr val);
 
+    // retrieve formatter
     LogFormatter::ptr getFormatter();
 
+    // set logging level
     void setLevel(LogLevel::Level level){ m_level = level; }
 
+    // retrieve logging level
     LogLevel::Level getLevel() const {return m_level; }
 
     virtual ~LogAppender(){};
@@ -202,6 +208,7 @@ protected:
     LogFormatter::ptr m_formatter;                              // format output to destination
     LogLevel::Level m_level = LogLevel::Level::DEBUG;           // Minimum level of Log the Appender can process
     bool m_hasFormatter = false;                                // Appender has its own formatter, not using logger formatter
+    MutexType m_mutex;
 };
 
 // Logger
@@ -209,6 +216,7 @@ class Logger : public std::enable_shared_from_this<Logger> {
     friend class LoggerManager;
 public:
     using ptr = std::shared_ptr<Logger>;
+    using MutexType = Spinlock;
 
     Logger(const std::string& name = "root");
 
@@ -241,6 +249,7 @@ public:
 private:
     std::string m_name;                         // logger name
     LogLevel::Level m_level;                    // minimum Level of Log which can be processed by Logger
+    MutexType m_mutex;
     std::list<LogAppender::ptr> m_appenders;    // a list of appenders to output log, we can customize appenders to output to different position
     LogFormatter::ptr m_formatter;              // when the added formatter is not set properly, assign logger formatter to it
     Logger::ptr m_root;
@@ -257,22 +266,27 @@ public:
 // Output to file
 class FileLogAppender : public LogAppender {
 public:
-    FileLogAppender (const std::string& filename);
+    using ptr = std::shared_ptr<FileLogAppender>;
 
-    virtual void log (Logger::ptr logger, LogLevel::Level level, LogEvent::ptr event) override;
-    virtual std::string toYamlString() override;
+    FileLogAppender(const std::string& filename);
+
+    void log (Logger::ptr logger, LogLevel::Level level, LogEvent::ptr event) override;
+    std::string toYamlString() override;
     bool reopen ();             // if the output file is opened, close and open it
 
 private:
     std::string m_filename;     // opened file
     std::ofstream m_filestream; // file stream binded to opened file
-};
+    uint64_t m_lastTime = 0;
+};  
 
 /* add more customized appender below */
 
 // Mangger to store all loggers, we can retrieve logger from Mangager
 class LoggerManager {
 public:
+    // Use Spinock in LogMgr
+    using MutexType = Spinlock;
     LoggerManager();
 
     // get a customized logger
@@ -290,6 +304,7 @@ public:
     std::string toYamlString ();
 
 private:
+    MutexType m_mutex;
     std::map<std::string, Logger::ptr> m_loggers;
 
     // default logger

@@ -15,15 +15,15 @@ Catch2 is a modern, C++-native, header-only testing framework for unit tests, TD
 
 
 ## Project Structure
-
-    bin --- binaries
-    build --- intermediate files
-    cmake --- cmake function folder
-    lib --- library output folder
-    tests --- testing code
-    source --- source code
-    CMakeLists.txt
-    Makefile
+    .
+    |—— bin             // binaries
+    |—— build           // intermediate files
+    |—— cmake           // cmake function folder
+    |—— lib             // library output folder
+    |—— tests           // testing code
+    |—— source          // source code
+    |—— CMakeLists.txt
+    |—— Makefile
 
 ## Modules
 ### Logger Module
@@ -143,7 +143,9 @@ static Logger::ptr g_log = SERVER_LOG_NAME("system");
 __Note__: At this point, the key of map only support std::string type
 
 ### Thread Module
-Encapsulate common functionalities of C++ 11 thread library, implement thread/semaphore/mutex/RWMutex/Spinlock. 
+Encapsulate common functionalities of C++ 11 thread library.
+
+Implement customized thread/semaphore/mutex/RWMutex/Spinlock which supports standard interface. 
 
 ### Coroutine Module
 
