@@ -53,5 +53,11 @@ add_dependencies(test_thread lib)
 force_redefine_file_macro_for_sources(test_thread)  # redefine __FILE__
 target_link_libraries(test_thread ${LIBS})
 
+# Thread util module
+add_executable(test_util tests/test_util.cpp)
+add_dependencies(test_util lib)
+force_redefine_file_macro_for_sources(test_util)  # redefine __FILE__
+target_link_libraries(test_util ${LIBS})
+
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)

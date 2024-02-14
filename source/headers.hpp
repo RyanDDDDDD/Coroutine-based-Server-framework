@@ -6,5 +6,6 @@
 #include "singleton.hpp"
 #include "thread.hpp"
 #include "util.hpp"
+#include "macro.hpp"
 
 #endif

@@ -7,11 +7,22 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <cstdint>
+#include <vector>
+#include <string>
 
 namespace Server {
-    pid_t getThreadId();
+// Get thread id from kernel
+pid_t getThreadId();
 
-    uint32_t getFiberId();
+// Get coroutine id from kernel
+uint32_t getFiberId();
+
+// Get stack frames
+void Backtrace(std::vector<std::string>& bt, int size, int skip = 1);
+
+// Get info of stack frames
+std::string BacktraceToString(int size, int skip = 2, const std::string& prefix = "");
+
 }
 
 #endif
