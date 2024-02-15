@@ -119,6 +119,15 @@ namespace Server {
         }
     };
 
+    class ThreadNameFormatIitem : public LogFormatter::FormatItem {
+    public:
+        ThreadNameFormatIitem(const std::string& str = "") {}
+
+        void format(std::ostream& os, Logger::ptr logger, LogLevel::Level level, LogEvent::ptr event) override {
+            os << event->getThreadName();
+        }
+    };
+
     class DateTimeFormatItem : public LogFormatter::FormatItem {
     public:
         DateTimeFormatItem(const std::string &format = "%Y-%m-%d %H:%M:%S") :m_format{ format } {
@@ -231,9 +240,7 @@ namespace Server {
     Logger::Logger (const std::string& name)
         : m_name{ name },
         m_level{LogLevel::Level::DEBUG},
-        m_formatter{std::make_shared<LogFormatter>("%d{%Y-%m-%d %H:%M:%S}%T%t%T%F%T[%p]%T[%c]%T%f:%l%T%m%n")} {
-        // m_formatter.reset(new LogFormatter("%d{%Y-%m-%d %H:%M:%S}%T%t%T%F%T[%p]%T[%c]%T%f:%l%T%m%n"));
-
+        m_formatter{std::make_shared<LogFormatter>("%d{%Y-%m-%d %H:%M:%S}%T%t%T%N%T%F%T[%p]%T[%c]%T%f:%l%T%m%n")} {
     };
 
     LogFormatter::ptr Logger::getFormatter() {
@@ -546,17 +553,18 @@ namespace Server {
 #define XX(str, C) \
     {#str,[](const std::string &fmt) { return FormatItem::ptr(std::make_shared<C>(fmt)); }}
 
-            XX(m, MessageFormatItem),   // %m --- message body
-            XX(p, LevelFormatItem),     // %p --- priority level
-            XX(r, ElapseFormatItem),    // %r --- number of milliseconds elapsed since the logger created
-            XX(c, NameFormatItem),      // %c --- name of logger
-            XX(t, ThreadIdFormatItem),  // %t --- thread id
-            XX(n, NewLineFormatItem),   // %n --- newline char
-            XX(d, DateTimeFormatItem),  // %d --- time stamp
-            XX(f, FilenameFormatItem),  // %f --- file name
-            XX(l, LineFormatItem),      // %l --- line number
-            XX(T, TabFormatItem),       // %T --- Tab
-            XX(F, FiberIdFormatItem)    // %F --- Coroutine Id
+            XX(m, MessageFormatItem),    // %m --- message body
+            XX(p, LevelFormatItem),      // %p --- priority level
+            XX(r, ElapseFormatItem),     // %r --- number of milliseconds elapsed since the logger created
+            XX(c, NameFormatItem),       // %c --- name of logger
+            XX(t, ThreadIdFormatItem),   // %t --- thread id
+            XX(n, NewLineFormatItem),    // %n --- newline char
+            XX(d, DateTimeFormatItem),   // %d --- time stamp
+            XX(f, FilenameFormatItem),   // %f --- file name
+            XX(l, LineFormatItem),       // %l --- line number
+            XX(T, TabFormatItem),        // %T --- Tab
+            XX(F, FiberIdFormatItem),     // %F --- Coroutine Id
+            XX(N, ThreadNameFormatIitem) // %N --- Thread name
 #undef XX
 
         };

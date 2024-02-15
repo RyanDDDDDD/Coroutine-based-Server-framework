@@ -143,11 +143,30 @@ static Logger::ptr g_log = SERVER_LOG_NAME("system");
 __Note__: At this point, the key of map only support std::string type
 
 ### Thread Module
-Encapsulate common functionalities of C++ 11 thread library.
+Encapsulate common functionalities of C++ 11 thread library, using \<pthread\.h> library.
 
-Implement customized thread/semaphore/mutex/RWMutex/Spinlock which supports standard interface. 
+Implement customized thread/semaphore/mutex/RWMutex/CASlock/Spinlock which supports standard interface. 
+
+RWMutex/CASlock/Spinlock are commonly used in high concurrency situation.
+
+```cpp
+    Server::Mutex mutex;
+    for (int i = 0; i < 10000; ++i) {
+        Server::Mutex::Lock lock(mutex);
+        ++count;
+    }
+```
 
 ### Coroutine Module
+Coroutine: Light-weight thread compared with thread (i.e. a thread of a thread). Currently implemented by uconttext_t, would be upgraded by boost.context in the future.
+
+```
+    Thread -> main_fiber <------> sub_fiber
+                ^
+                |
+                v
+            sub_fiber
+```
 
 ### Coroutine Schedule Module
 

@@ -68,7 +68,7 @@ Thread::Thread(std::function<void()> cb, const std::string& name)
         throw std::logic_error("pthread_create error");
     }
 
-    // wait unitl the thread is created and run
+    // wait unitl the thread is created in kernel and run
     m_semaphore.wait();
 };
 

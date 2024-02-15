@@ -2,6 +2,7 @@
 
 #include "util.hpp"
 #include "log.hpp"
+#include "fiber.hpp"
 
 namespace Server {
 
@@ -12,7 +13,7 @@ pid_t getThreadId(){
 };
 
 uint32_t getFiberId(){
-    return 0;
+    return Server::Fiber::getFiberId();
 };
 
 void Backtrace(std::vector<std::string>& bt, int size, int skip){

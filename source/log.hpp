@@ -23,7 +23,7 @@
         Server::LogEventWrap(   \
             Server::LogEvent::ptr(new Server::LogEvent( \
             logger, level, __FILE__, __LINE__, 0, Server::getThreadId(), \
-            Server::getFiberId(), time(0), std::string("")))).getSS()
+            Server::getFiberId(), time(0), Server::Thread::GetName()))).getSS()
 
 #define SERVER_LOG_DEBUG(logger) SERVER_LOG_LEVEL(logger, Server::LogLevel::Level::DEBUG)
 #define SERVER_LOG_INFO(logger) SERVER_LOG_LEVEL(logger, Server::LogLevel::Level::INFO)
@@ -36,7 +36,7 @@
     if(logger->getLevel() <= level) \
         Server::LogEventWrap(Server::LogEvent::ptr(new Server::LogEvent(logger, level, \
         __FILE__, __LINE__,  0, Server::getThreadId(), \
-        Server::getFiberId(), time(0)))).getEvent()->format(fmt, __VA_ARGS__)
+        Server::getFiberId(), time(0), Server::Thread::GetName()))).getEvent()->format(fmt, __VA_ARGS__)
 
 #define SERVER_LOG_FMT_DEBUG(logger, fmt, ...) SERVER_LOG_FMT_LEVEL(logger, Server::LogLevel::Level::DEBUG, fmt, __VA_ARGS__)
 #define SERVER_LOG_FMT_INFO(logger, fmt, ...) SERVER_LOG_FMT_LEVEL(logger, Server::LogLevel::Level::INFO, fmt, __VA_ARGS__)
@@ -111,14 +111,14 @@ public:
     void format(const char* fmt, va_list al);
 
 private:
-    const char* m_file    = nullptr; // file name
-    int32_t m_line        = 0;       // lines' number
-    uint32_t m_elapse     = 0;       // milliseconds between program start and current
-    uint32_t m_threadId   = 0;       // thread Id
-    uint32_t m_fiberId    = 0;       // coroutine Id
-    uint64_t m_time       = 0;       // time stamp
-    std::string m_threadName;        // Thread name
-    std::stringstream m_ss;          // input stream for user input
+    const char* m_file    = nullptr;  // file name
+    int32_t m_line        = 0;        // lines' number
+    uint32_t m_elapse     = 0;        // milliseconds between program start and current
+    uint32_t m_threadId   = 0;        // thread Id
+    uint32_t m_fiberId    = 0;        // coroutine Id
+    uint64_t m_time       = 0;        // time stamp
+    std::string m_threadName;         // Thread name
+    std::stringstream m_ss;           // input stream for user input
     std::shared_ptr<Logger> m_logger; // ptr to the logger which format current event
     LogLevel::Level m_level;          // event level
 };

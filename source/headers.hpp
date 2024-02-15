@@ -7,5 +7,6 @@
 #include "thread.hpp"
 #include "util.hpp"
 #include "macro.hpp"
+#include "fiber.hpp"
 
 #endif

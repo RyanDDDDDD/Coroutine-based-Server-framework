@@ -259,7 +259,7 @@ public:
     // Get the name of thread (used by logger)
     static const std::string& GetName();
 
-    // Set thread name
+    // Set thread name of current thread
     static void setName(const std::string& name);
 
 private:

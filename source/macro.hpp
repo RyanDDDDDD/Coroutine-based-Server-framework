@@ -5,6 +5,7 @@
 #include <assert.h>
 #include "util.hpp"
 
+
 #define SERVER_ASSERT(x) \
     if (!(x)) { \
         SERVER_LOG_ERROR(SERVER_LOG_ROOT()) << "\n" << "ASSERTION FAILED: " #x \
@@ -13,7 +14,7 @@
         assert(x); \
     }
 
-#define SERVER_ASSERT2(x, w) \
+#define SERVER_ASSERT_INFO(x, w) \
     if (!(x)) { \
         SERVER_LOG_ERROR(SERVER_LOG_ROOT()) << "\n" << "ASSERTION FAILED: " #x \
             << "\n" << w \
