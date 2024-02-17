@@ -44,6 +44,8 @@ public:
     // get coroutine Id
     uint64_t getId() const { return m_id; };
 
+    State getState() const { return m_state; };
+
 public:
     // setup current coroutine
     static void setThis(Fiber* f);

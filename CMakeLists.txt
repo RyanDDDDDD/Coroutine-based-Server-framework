@@ -24,6 +24,7 @@ set(LIB_SRC
     source/config.cpp
     source/thread.cpp
     source/fiber.cpp
+    source/scheduler.cpp
     )
 
 add_library(lib SHARED ${LIB_SRC})

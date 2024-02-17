@@ -14,28 +14,6 @@ static thread_local std::string t_thread_name{ "UNKNOWN" };
 // logger to output system info
 static Server::Logger::ptr g_logger = SERVER_LOG_NAME("system");
 
-Semaphore::Semaphore(uint32_t count){
-    if (sem_init(&m_semaphore, 0, count)) {
-        throw std::logic_error("sem_init error");
-    }
-};
-
-Semaphore::~Semaphore(){
-    sem_destroy(&m_semaphore);
-};
-
-void Semaphore::wait(){
-    // sem_wait return 0 when success
-    if (sem_wait(&m_semaphore)){
-        throw std::logic_error("sem_wait error");
-    }
-};
-
-void Semaphore::notify(){
-    if (sem_post(&m_semaphore)){
-        throw std::logic_error("sem_post error");
-    }
-};
 
 Thread* Thread::getThis() {
     return t_thread;

@@ -99,6 +99,7 @@ Fiber::~Fiber() {
 
 void Fiber::reset(std::function<void()> cb) {
     SERVER_ASSERT(m_stack);
+    // the coroutine should not be in execution
     SERVER_ASSERT(m_state == State::TERM 
                 || m_state == State::EXCEPT
                 || m_state == State::INIT);
