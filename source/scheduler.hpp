@@ -45,14 +45,16 @@ public:
 
 
     /*
-        schedule functional object or coroutine
+        schedule a functional object or coroutine
+        fc: functional object or coroutine to be executed
+        thread: specify thread to execute task
     */ 
     template<typename FiberOrCb>
     void schedule(FiberOrCb fc, int thread = -1) {
         bool needTickle = false;
         {
             MutexType::Lock lock(m_mutex);
-            needTickle = scheduleNoLock(FiberOrCb fc, int thread);   
+            needTickle = scheduleNoLock(fc, thread);   
         }
 
         if (needTickle) {

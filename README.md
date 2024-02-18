@@ -173,10 +173,10 @@ Coroutine: Light-weight thread compared with thread (i.e. a thread of a thread).
           1:N         1:M
 scheduler ---> thread ---> fiber
 
+```
+
 1. Utilize thread pool for thread management in coroutine scheduler
 2. Coroutine scheduler, assign coroutine to specific thread and execute
-
-```
 
 
 

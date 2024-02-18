@@ -1,6 +1,9 @@
 #ifndef __SERVER_MUTEX_HPP__
 #define __SERVER_MUTEX_HPP__
 
+#include <atomic>
+#include <semaphore.h>
+
 namespace Server {
 
 // lock guard for mutex

@@ -7,6 +7,8 @@
 #include "thread.hpp"
 #include "util.hpp"
 #include "macro.hpp"
+#include "mutex"
 #include "fiber.hpp"
+#include "scheduler.hpp"
 
 #endif

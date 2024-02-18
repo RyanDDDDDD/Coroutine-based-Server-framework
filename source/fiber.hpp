@@ -9,7 +9,9 @@
 
 namespace Server {
 
+class Scheduler;
 class Fiber : public std::enable_shared_from_this<Fiber> {
+friend class Scheduler;
 public:
     using ptr = std::shared_ptr<Fiber>;
 
@@ -28,7 +30,7 @@ private:
 
 public:
     // constructor for sub coroutine
-    Fiber(std::function<void()> cb, size_t stackSize = 0);
+    Fiber(std::function<void()> cb, size_t stackSize = 0, bool useCaller = false);
 
     ~Fiber();
     
@@ -40,6 +42,9 @@ public:
 
     // switch back to main coroutine
     void swapOut();
+
+    void call();
+    void back();
 
     // get coroutine Id
     uint64_t getId() const { return m_id; };
@@ -64,6 +69,9 @@ public:
 
     // callback in coroutine
     static void mainFunc();
+
+    // callback in coroutine
+    static void callerMainFunc();
 
     static uint64_t getFiberId();
 private:

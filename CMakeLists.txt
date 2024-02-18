@@ -24,6 +24,7 @@ set(LIB_SRC
     source/config.cpp
     source/thread.cpp
     source/fiber.cpp
+    source/mutex.cpp
     source/scheduler.cpp
     )
 
@@ -38,10 +39,10 @@ set(LIBS
     )
 
 # Logger test module
-add_executable(test tests/test.cpp)
-add_dependencies(test lib)
-force_redefine_file_macro_for_sources(test)         # redefine __FILE__
-target_link_libraries(test ${LIBS})
+add_executable(test_logger tests/test_logger.cpp)
+add_dependencies(test_logger lib)
+force_redefine_file_macro_for_sources(test_logger)         # redefine __FILE__
+target_link_libraries(test_logger ${LIBS})
 
 # Configuration test module
 add_executable(test_config tests/test_config.cpp)
@@ -55,11 +56,23 @@ add_dependencies(test_thread lib)
 force_redefine_file_macro_for_sources(test_thread)  # redefine __FILE__
 target_link_libraries(test_thread ${LIBS})
 
-# Thread util module
+# Util test module
+add_executable(test_util tests/test_util.cpp)
+add_dependencies(test_util lib)
+force_redefine_file_macro_for_sources(test_util)    # redefine __FILE__
+target_link_libraries(test_util ${LIBS})
+
+# Fiber test module
 add_executable(test_fiber tests/test_fiber.cpp)
 add_dependencies(test_fiber lib)
 force_redefine_file_macro_for_sources(test_fiber)    # redefine __FILE__
 target_link_libraries(test_fiber ${LIBS})
+
+# Scheduler test module
+add_executable(test_scheduler tests/test_scheduler.cpp)
+add_dependencies(test_scheduler lib)
+force_redefine_file_macro_for_sources(test_scheduler)    # redefine __FILE__
+target_link_libraries(test_scheduler ${LIBS})
 
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
