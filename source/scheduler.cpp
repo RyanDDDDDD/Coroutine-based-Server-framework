@@ -5,8 +5,12 @@
 namespace Server {
 static Server::Logger::ptr g_logger = SERVER_LOG_NAME("system");
 
-static thread_local Scheduler* t_scheduler = nullptr;
-static thread_local Fiber* t_fiber = nullptr;
+// t_scheduler and t_fiber can be retrieved by client using Scheduler::getThis(), Scheduler::getMainFiber()
+// pointer to scheduler
+static thread_local Scheduler* t_scheduler{ nullptr };
+
+// pointer to the coroutine that is currently working on thread
+static thread_local Fiber* t_fiber{ nullptr };
 
 Scheduler::Scheduler(size_t threads, bool useCaller, const std::string& name): m_name{ name } {
     SERVER_ASSERT(threads > 0);
@@ -16,16 +20,22 @@ Scheduler::Scheduler(size_t threads, bool useCaller, const std::string& name): m
         Server::Fiber::getThis();
         --threads;
 
+        // scheduler should not be initialized before
         SERVER_ASSERT(getThis() == nullptr);
         t_scheduler = this;
 
-        m_rootFiber.reset(new Fiber(std::bind(&Scheduler::run, this), 0, true));
+        m_rootFiber = std::make_shared<Fiber>(std::bind(&Scheduler::run, this), 0, true);
+        
+        // set current thread name as the name of scheduler
         Server::Thread::setName(m_name);
 
+        // setup static pointer to main coroutine
         t_fiber = m_rootFiber.get();
+
         m_rootThread = Server::getThreadId();
         m_threadIds.push_back(m_rootThread);
     } else {
+        // we won't use main coroutine to perform tasks
         m_rootThread = -1;
     }
 
@@ -34,7 +44,6 @@ Scheduler::Scheduler(size_t threads, bool useCaller, const std::string& name): m
 
 Scheduler::~Scheduler() {
     SERVER_ASSERT(!m_isRunning);
-
 
     if (getThis() == this) {
         t_scheduler = nullptr;
@@ -56,26 +65,25 @@ void Scheduler::start() {
     }
 
     m_isRunning = true;
+
+    // the thread pool should be empty, no thread running in thread pool
     SERVER_ASSERT(m_threads.empty());
 
     m_threads.resize(m_threadCount);
     for(size_t i = 0; i < m_threadCount; ++i) {
+        // create a number of threads in thread pool, to perform tasks concurrently
         m_threads[i] = std::make_shared<Thread>(std::bind(&Scheduler::run, this),
                                     m_name + "_" + std::to_string(i));
-        
+        // record thread id
         m_threadIds.push_back(m_threads[i]->getId());
     }
 
     lock.unlock();
-    // if (m_rootFiber) {
-    //     m_rootFiber->call();
-    //     SERVER_LOG_INFO(g_logger) << "call out " << static_cast<int>(m_rootFiber->getState());
-    // }
 };
 
 void Scheduler::stop() {
     m_autoStop = true;
-    // check if main coroutine is terminated
+    // check if main coroutine is terminated (thread pool is stopped)
     if (m_rootFiber
         && m_threadCount == 0
         && (m_rootFiber->getState() == Fiber::State::TERM
@@ -89,44 +97,33 @@ void Scheduler::stop() {
             return;
         }
     }
-
-    // bool exitOnThisFiber = false;
     
+    // there are still some threads running in thread pool
     if (m_rootThread != -1) {
-        // caller thread
+        // caller thread, which should contain main coroutine
         SERVER_ASSERT(getThis() == this);
-        
     } else {
         // callee thread
         SERVER_ASSERT(getThis() != this);
-
     }
 
     m_isRunning = false;
     for (size_t i = 0; i < m_threadCount; ++i) {
-        tickle();
+        notify();
     }
 
     if (m_rootFiber) {
-        tickle();
+        notify();
     }
 
     if (m_rootFiber) {
-        // while (!stopped()) {
-        //     if (m_rootFiber->getState() == Fiber::State::TERM
-        //         || m_rootFiber->getState() == Fiber::State::EXCEPT) {
-        //             m_rootFiber.reset(new Fiber(std::bind(&Scheduler::run, this), 0, true));
-        //             SERVER_LOG_INFO(g_logger) << "root fiber is term, reset";
-        //             t_fiber = m_rootFiber.get();
-        //         }
-
-        //     m_rootFiber->call();
-        // }
         if (!stopped()) {
+            // call the callback of main coroutine
             m_rootFiber->call();
         }
     }
 
+    // wait until all threads finish
     std::vector<Thread::ptr> threads;
     {
         MutexType::Lock lock(m_mutex);
@@ -136,9 +133,6 @@ void Scheduler::stop() {
     for (auto& t : threads) {
         t->join();
     }
-
-    // if (exitOnThisFiber) {}
-
 };
 
 void Scheduler::setThis() {
@@ -146,56 +140,61 @@ void Scheduler::setThis() {
 }
 
 void Scheduler::run() {
-    SERVER_LOG_INFO(g_logger) << "run";
+    SERVER_LOG_INFO(g_logger) << m_name << "run";
     setThis();
 
+    // a sub thread in thread pool
     if (Server::getThreadId() != m_rootThread) {
+        // set up sub coroutine 
         t_fiber = Fiber::getThis().get();
     } 
 
-    Fiber::ptr idleFiber(new Fiber(std::bind(&Scheduler::idle,this)));
-    Fiber::ptr cbFiber;
+    Fiber::ptr idleFiber = std::make_shared<Fiber>(std::bind(&Scheduler::idle,this));
+    Fiber::ptr cbFiber = nullptr;
     
     FiberAndThread ft;
     while(true) {
         ft.reset();
-        bool tickleMe = false;
+        bool notifyMe = false;
         bool isActive = false;
         {
             // retrieve message from message queue
             MutexType::Lock lock(m_mutex);
             auto it = m_fibers.begin();
             while (it != m_fibers.end()) {
+                // current coroutine is assigned to specific thread
                 if (it->thread != -1 && it->thread != Server::getThreadId()) {
                     ++it;
-                    tickleMe = true;
+                    notifyMe = true;
                     continue;
                 }
 
                 SERVER_ASSERT(it->fiber || it->cb);
+                // skip if next message is current coroutine which is executed by other threads
                 if (it->fiber && it->fiber->getState() == Fiber::State::EXEC) {
                     ++it;
                     continue;
                 }
-
+                
                 // retrieve next message from MQ
                 ft = *it;
                 m_fibers.erase(it);
-                ++m_activeThreatCount;
+                ++m_activeThreadCount;
                 isActive = true;
                 break;
             }
         }
 
-        if (tickleMe) {
-            tickle();
+        if (notifyMe) {
+            notify();
         }
 
         if (ft.fiber && (ft.fiber->getState() != Fiber::State::TERM
                         && ft.fiber->getState() != Fiber::State::EXCEPT)) {
             // next message is a coroutine
             ft.fiber->swapIn();
-            --m_activeThreatCount;
+            --m_activeThreadCount;
+
             if (ft.fiber->getState() == Fiber::State::READY) {
                 schedule(ft.fiber);
             } else if (ft.fiber->getState() != Fiber::State::TERM
@@ -209,12 +208,12 @@ void Scheduler::run() {
             if (cbFiber) {
                 cbFiber->reset(ft.cb);
             } else {
-                cbFiber.reset(new Fiber(ft.cb));
+                cbFiber = std::make_shared<Fiber>(ft.cb);
                 ft.cb = nullptr;
             }
             ft.reset();
             cbFiber->swapIn();
-            --m_activeThreatCount;
+            --m_activeThreadCount;
             if (cbFiber->getState() == Fiber::State::READY) {
                 schedule(cbFiber);
                 cbFiber.reset();
@@ -227,7 +226,7 @@ void Scheduler::run() {
             }
         } else {
             if (isActive) {
-                --m_activeThreatCount;
+                --m_activeThreadCount;
                 continue;
             }
 
@@ -236,7 +235,8 @@ void Scheduler::run() {
                 SERVER_LOG_INFO(g_logger) << "idle fiber term";
                 break;
             }
-
+            
+            ++m_idleThreadCount;
             idleFiber->swapIn();
             --m_idleThreadCount;
             if(idleFiber->getState() != Fiber::State::TERM
@@ -247,8 +247,8 @@ void Scheduler::run() {
     }
 };
 
-void Scheduler::tickle(){
-    SERVER_LOG_INFO(g_logger) << "tickle";
+void Scheduler::notify(){
+    SERVER_LOG_INFO(g_logger) << "notify";
 };
 
 bool Scheduler::stopped(){
@@ -256,7 +256,7 @@ bool Scheduler::stopped(){
     return m_autoStop 
         && !m_isRunning
         && m_fibers.empty()
-        && m_activeThreatCount == 0;
+        && m_activeThreadCount == 0;
 };
 
 void Scheduler::idle(){

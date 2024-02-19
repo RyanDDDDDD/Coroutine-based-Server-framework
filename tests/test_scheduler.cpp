@@ -14,7 +14,7 @@ void test_fiber() {
 
 int main() {
     SERVER_LOG_INFO(g_logger) << "main";
-    Server::Scheduler sc(3, false, "test");
+    Server::Scheduler sc(3, true, "test");
     sc.start();
     SERVER_LOG_INFO(g_logger) << "schedule";
     sc.schedule(&test_fiber);

@@ -16,12 +16,12 @@ public:
     using ptr = std::shared_ptr<Fiber>;
 
     enum class State {
-        INIT,
-        HOLD,
-        EXEC,
-        TERM,
-        READY,
-        EXCEPT
+        INIT,   // initialized
+        HOLD,   // suspend
+        EXEC,   // exectuing
+        TERM,   // terminated
+        READY,  // ready to execute
+        EXCEPT  // exception
     };
 
 private:
@@ -44,11 +44,13 @@ public:
     void swapOut();
 
     void call();
+    
     void back();
 
     // get coroutine Id
     uint64_t getId() const { return m_id; };
 
+    // return the state of coroutine
     State getState() const { return m_state; };
 
 public:
@@ -73,6 +75,7 @@ public:
     // callback in coroutine
     static void callerMainFunc();
 
+    // return coroutine id
     static uint64_t getFiberId();
 private:
     // coroutine id

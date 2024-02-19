@@ -10,13 +10,13 @@ namespace Server {
 
 static Logger::ptr g_logger = SERVER_LOG_NAME("system");
 
-static std::atomic<uint64_t> s_fiber_id { 0 };
-static std::atomic<uint64_t> s_fiber_count { 0 };
+static std::atomic<uint64_t> s_fiber_id{ 0 };
+static std::atomic<uint64_t> s_fiber_count{ 0 };
 
-// pointer to current main/sub coroutine
+// pointer to coroutine which is executed in current thread
 static thread_local Fiber* t_fiber{ nullptr };
 
-// pointer to current main coroutine
+// pointer to the main coroutine of current thread
 static thread_local Fiber::ptr t_threadFiber{ nullptr }; 
 
 static ConfigArg<uint32_t>::ptr gFiberStackSize = 
@@ -125,8 +125,8 @@ void Fiber::reset(std::function<void()> cb) {
 
 void Fiber::call() {
     setThis(this);
+    SERVER_ASSERT(m_state != State::EXEC);
     m_state = State::EXEC;
-    SERVER_LOG_ERROR(g_logger) << getId();
     if(swapcontext(&t_threadFiber->m_ctx, &m_ctx)) {
         SERVER_ASSERT_INFO(false, "call: swapcontext failed");
     }
@@ -134,8 +134,9 @@ void Fiber::call() {
 
 void Fiber::back() {
     setThis(t_threadFiber.get());
+    SERVER_ASSERT(m_state != State::EXEC);
     if (swapcontext(&m_ctx, &t_threadFiber->m_ctx)) {
-        SERVER_ASSERT_INFO(false, "swapout: swapcontext failed");
+        SERVER_ASSERT_INFO(false, "back: swapcontext failed");
     }
 }
 
@@ -143,7 +144,7 @@ void Fiber::swapIn() {
     setThis(this);
     SERVER_ASSERT(m_state != State::EXEC);
     m_state = State::EXEC;
-
+    // swap with the coroutine that is currently working on thread
     if (swapcontext(&Scheduler::getMainFiber()->m_ctx, &m_ctx)) {
         SERVER_ASSERT_INFO(false, "swapin: swapcontext failed");
     }
@@ -165,9 +166,12 @@ Fiber::ptr Fiber::getThis() {
         return t_fiber->shared_from_this();
     }
 
-    // using default constructor to initializ coroutine
+    // main coroutine is not initialized
+    // using default constructor to initialize coroutine
     Fiber::ptr main_fiber(new Fiber);
     SERVER_ASSERT(t_fiber == main_fiber.get());
+
+    // the static pointer now points to the main coroutine
     t_threadFiber = main_fiber;
 
     return t_fiber->shared_from_this();
