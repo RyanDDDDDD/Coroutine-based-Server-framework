@@ -44,7 +44,7 @@ public:
     void swapOut();
 
     void call();
-    
+
     void back();
 
     // get coroutine Id
@@ -88,7 +88,7 @@ private:
     State m_state = State::INIT;
 
     ucontext_t m_ctx;
-
+    
     void* m_stack = nullptr;
 
     // called method in coroutine

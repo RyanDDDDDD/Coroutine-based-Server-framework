@@ -78,6 +78,8 @@ protected:
 
     // determine if the scheduler is stopped and executes all tasks in thread pool
     virtual bool stopped();
+
+    // used for a idle coroutine when no events in thread pool
     virtual void idle();
     void run();
     void setThis();

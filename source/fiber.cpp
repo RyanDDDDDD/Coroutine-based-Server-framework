@@ -201,7 +201,7 @@ void Fiber::mainFunc() {
     try {
         cur->m_cb();
         cur->m_cb = nullptr;
-        cur->m_state = State::TERM;;
+        cur->m_state = State::TERM;
     } catch (std::exception& e) {
         cur->m_state = State::EXCEPT;
         SERVER_LOG_ERROR(g_logger) << "Fiber Exception: " << e.what()

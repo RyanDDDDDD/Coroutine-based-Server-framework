@@ -179,8 +179,23 @@ scheduler ---> thread ---> fiber
 2. Coroutine scheduler, assign coroutine to specific thread and execute
 
 
+### IO Coroutine Scheduler Module
+Inherited from Coroutine Scheduler. Encapsulate epoll to support IO multiplexing.
+```
+    IOManager(epoll) ---> Scheduler
+        |
+        |
+        v
+    idle(epoll_wait)
 
-### IO Coroutine Schedule Module
+
+message_queue (semaphore)
+    |
+    |------ Thread
+    |------ Thread
+    
+
+```
 
 ## Testing
 
