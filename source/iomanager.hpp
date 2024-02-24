@@ -10,7 +10,7 @@ public:
     using ptr = std::shared_ptr<IOManager>;
     using RWMutexType = RWMutex;
 
-    enum class Event {
+    enum Event {
         NONE = 0x0,
         READ = 0x1,
         WRITE = 0x2
@@ -31,6 +31,12 @@ private:
             // event callback
             std::function<void()> cb;
         };      
+
+        EventContext& getContext(Event event);
+
+        void resetContext(EventContext& ctx);
+
+        void triggerEvent(Event event);
 
         // file descriptor of the event
         int fd;
