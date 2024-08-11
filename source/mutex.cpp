@@ -1,4 +1,5 @@
 #include "mutex.hpp"
+#include <stdexcept>
 
 namespace Server {
 

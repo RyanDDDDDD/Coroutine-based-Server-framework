@@ -11,7 +11,7 @@ namespace Server {
 
 static Server::Logger::ptr g_logger = SERVER_LOG_NAME("system");
 
-EventContext& IOManager::FdContext::getContext(Event event){
+IOManager::FdContext::EventContext& IOManager::FdContext::getContext(Event event){
     switch(event) {
         case IOManager::READ:
             return read;
@@ -50,7 +50,7 @@ IOManager::IOManager(size_t threads, bool useCaller, const std::string& name)
     SERVER_ASSERT(m_epfd > 0);
 
     int ret = pipe(m_notifyFds);
-    SERVER_ASSERT(ret);
+    SERVER_ASSERT(!ret);
 
     epoll_event event;
     memset(&event, 0, sizeof(epoll_event));
@@ -58,10 +58,10 @@ IOManager::IOManager(size_t threads, bool useCaller, const std::string& name)
     event.data.fd = m_notifyFds[0];
 
     ret = fcntl(m_notifyFds[0], F_SETFL, O_NONBLOCK);
-    SERVER_ASSERT(ret);
+    SERVER_ASSERT(!ret);
 
     ret = epoll_ctl(m_epfd, EPOLL_CTL_ADD, m_notifyFds[0], &event);
-    SERVER_ASSERT(ret);
+    SERVER_ASSERT(!ret);
 
     // initialize fd context 
     contextResize(32);
@@ -97,14 +97,14 @@ void IOManager::contextResize(size_t size) {
 int IOManager::addEvent(int fd, Event event, std::function<void()> cb){
     FdContext* fdCtx = nullptr;
     RWMutexType::ReadLock lock(m_mtx);
-    if (m_fdContexts.size() > fd) {
+    if (static_cast<int>(m_fdContexts.size()) > fd) {
         fdCtx = m_fdContexts[fd];
         lock.unlock();
     } else {
         lock.unlock();
         // update m_fdContexts using write lock
         RWMutexType::WriteLock lock2(m_mtx);
-        contextResize(m_fdContexts.size() * 1.5);   // TODO: resize according to fd 
+        contextResize(fd * 1.5);   // TODO: resize according to fd 
         fdCtx = m_fdContexts[fd];
     }
 
@@ -142,15 +142,15 @@ int IOManager::addEvent(int fd, Event event, std::function<void()> cb){
         eventCtx.cb.swap(cb);
     } else {
         eventCtx.fiber = Fiber::getThis();
-        SERVER_ASSERT(context.fiber->getState() == Fiber::State::EXEC);
+        SERVER_ASSERT(eventCtx.fiber->getState() == Fiber::State::EXEC);
     }
 
     return 0;
 };
 
 bool IOManager::delEvent(int fd, Event event){
-    RWMutexType::ReadLock lock(m_mutex);
-    if (m_fdContexts.size() < fd) {
+    RWMutexType::ReadLock lock(m_mtx);
+    if (static_cast<int>(m_fdContexts.size()) <= fd) {
         return false;
     }
 
@@ -186,8 +186,8 @@ bool IOManager::delEvent(int fd, Event event){
 };
 
 bool IOManager::cancelEvent(int fd, Event event){
-    RWMutexType::ReadLock lock(m_mutex);
-    if (m_fdContexts.size() < fd) {
+    RWMutexType::ReadLock lock(m_mtx);
+    if (static_cast<int>(m_fdContexts.size()) <= fd) {
         return false;
     }
 
@@ -195,7 +195,7 @@ bool IOManager::cancelEvent(int fd, Event event){
     lock.unlock();
     
     FdContext::MutexType::Lock lock2(fd_ctx->mtx);
-    if(!(fd_ctx->events | event)) {
+    if(!(fd_ctx->events & event)) {
         return false;
     }
 
@@ -223,8 +223,8 @@ bool IOManager::cancelEvent(int fd, Event event){
 };
 
 bool IOManager::cancelAll(int fd){
-    RWMutexType::ReadLock lock(m_mutex);
-    if (m_fdContexts.size() < fd) {
+    RWMutexType::ReadLock lock(m_mtx);
+    if (static_cast<int>(m_fdContexts.size()) < fd) {
         return false;
     }
 
@@ -269,5 +269,103 @@ IOManager* IOManager::getThis(){
     // retrieve smart pointer from Schduler::getThis() (i.e return a static pointer to scheduler)
     return dynamic_cast<IOManager*>(Scheduler::getThis());
 };
+
+void IOManager::notify() {
+    if (!hasIdleThreads()) {
+        return;
+    }
+
+    int ret = write(m_notifyFds[1], "T", 1);
+    SERVER_ASSERT(ret == 1);
+}
+
+bool IOManager::stopped() {
+    return Scheduler::stopped()
+        && m_pendingEventCount == 0;
+}
+
+void IOManager::idle() {
+    epoll_event* events = new epoll_event[64]();
+    std::shared_ptr<epoll_event> shared_events(events, [](epoll_event* ptr){
+        delete[] ptr;
+    });
+
+    while(true) {
+        if (stopped()) {
+            SERVER_LOG_INFO(g_logger) << "name=" << getName() << " idle stopped exit";
+            break;
+        }
+
+        int ret = 0;
+
+        do {
+            static const int MAX_TIMEOUT = 5000;
+            ret = epoll_wait(m_epfd, events, 64, MAX_TIMEOUT);
+            
+            if (ret < 0 && errno == EINTR) {
+
+            } else {
+                break;
+            }
+        } while (true);
+
+        for (int i = 0; i < ret; ++i) {
+            epoll_event& event = events[i];
+
+            if (event.data.fd == m_notifyFds[0]) {
+                uint8_t dummy;
+                while (read(m_notifyFds[0], &dummy, 1) == 1);
+                continue;
+            }
+
+            FdContext* fd_ctx = static_cast<FdContext*>(event.data.ptr);
+            FdContext::MutexType::Lock lock(fd_ctx->mtx);
+            if (event.events & (EPOLLERR | EPOLLHUP)) {
+                event.events |= EPOLLIN | EPOLLOUT;
+            }
+
+            int real_events = NONE;
+            if (event.events & EPOLLIN) {
+                real_events |= READ;
+            }
+
+            if (event.events & EPOLLOUT) {
+                real_events |= WRITE;
+            }
+
+            if ((fd_ctx->events & real_events) == NONE) 
+                continue;
+
+            int left_events = (fd_ctx->events & ~real_events);
+            int op = left_events ? EPOLL_CTL_MOD : EPOLL_CTL_DEL;
+            event.events = EPOLLET | left_events;
+
+            int ret2 = epoll_ctl(m_epfd, op, fd_ctx->fd, &event);
+            if (ret2) {
+                SERVER_LOG_ERROR(g_logger) << "epoll_ctl (" << m_epfd << ", "
+                                    << op << "," << fd_ctx->fd << "," << event.events << "):"
+                                    << ret2 << " (" << errno << ") (" << strerror(errno) << ")";
+
+                continue;
+            }
+
+            if (real_events & READ) {
+                fd_ctx->triggerEvent(READ);
+                --m_pendingEventCount;
+            }
+
+            if (real_events & WRITE) {
+                fd_ctx->triggerEvent(WRITE);
+                --m_pendingEventCount;
+            }
+        }
+
+        Fiber::ptr cur = Fiber::getThis();
+        auto raw_ptr = cur.get();
+        cur.reset();        
+
+        raw_ptr->swapOut();
+    }
+}
 
 }

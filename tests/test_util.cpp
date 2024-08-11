@@ -1,4 +1,4 @@
-#include "../source/headers.hpp"
+#include "source/headers.hpp"
 
 Server::Logger::ptr g_logger = SERVER_LOG_ROOT();
 

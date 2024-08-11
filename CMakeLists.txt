@@ -5,12 +5,17 @@ project(ServerFramework)
 include(cmake/utils.cmake) 
 
 set(CMAKE_VERBOSE_MAKEFILE ON)
+set(CMAKE_PREFIX_PATH 
+    "/home/linuxbrew/.linuxbrew/opt/yaml-cpp" 
+    "/home/linuxbrew/.linuxbrew/opt/boost")
 
 find_package(Boost)
-include_directories(${Boost_INCLUDE_DIRS})
+include_directories(${Boost_INCLUDE_DIR})
 
 find_package(yaml-cpp)
 include_directories(${YAML_CPP_INCLUDE_DIR})
+
+include_directories(".")
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -26,6 +31,7 @@ set(LIB_SRC
     source/fiber.cpp
     source/mutex.cpp
     source/scheduler.cpp
+    source/iomanager.cpp
     )
 
 add_library(lib SHARED ${LIB_SRC})
@@ -35,6 +41,7 @@ force_redefine_file_macro_for_sources(lib)          # redefine __FILE__
 set(LIBS 
     lib
     pthread
+    ${Boost_LIBRARIES}
     yaml-cpp::yaml-cpp
     )
 
@@ -73,6 +80,12 @@ add_executable(test_scheduler tests/test_scheduler.cpp)
 add_dependencies(test_scheduler lib)
 force_redefine_file_macro_for_sources(test_scheduler)    # redefine __FILE__
 target_link_libraries(test_scheduler ${LIBS})
+
+# IOmanager test module
+add_executable(test_iomanager tests/test_iomanager.cpp)
+add_dependencies(test_iomanager lib)
+force_redefine_file_macro_for_sources(test_iomanager)    # redefine __FILE__
+target_link_libraries(test_iomanager ${LIBS})
 
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)

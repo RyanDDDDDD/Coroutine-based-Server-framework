@@ -217,11 +217,7 @@ void Fiber::mainFunc() {
     }
 
     auto r_ptr = cur.get();
-
-    // release ownership of shared_ptr
     cur.reset();
-
-    // this is a dangling pointer!!!
     r_ptr->swapOut();
 
     SERVER_ASSERT_INFO(false, "never reach fiber_id = " + std::to_string(r_ptr->getId()));
@@ -233,7 +229,7 @@ void Fiber::callerMainFunc() {
     try {
         cur->m_cb();
         cur->m_cb = nullptr;
-        cur->m_state = State::TERM;;
+        cur->m_state = State::TERM;
     } catch (std::exception& e) {
         cur->m_state = State::EXCEPT;
         SERVER_LOG_ERROR(g_logger) << "Fiber Exception: " << e.what()

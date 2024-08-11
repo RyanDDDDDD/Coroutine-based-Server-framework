@@ -12,8 +12,8 @@ public:
 
     enum Event {
         NONE = 0x0,
-        READ = 0x1,
-        WRITE = 0x2
+        READ = 0x1,     //EPOLLIN
+        WRITE = 0x4     //EPOLLOUT
     };
 
 private:
@@ -83,7 +83,7 @@ private:
     int m_notifyFds[2];
 
     std::atomic<size_t> m_pendingEventCount{ 0 };
-    MutexType m_mtx;
+    RWMutexType m_mtx;
     std::vector<FdContext*> m_fdContexts;
 };
 

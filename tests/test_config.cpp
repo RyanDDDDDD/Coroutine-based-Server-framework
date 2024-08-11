@@ -1,5 +1,5 @@
-#include "../source/config.hpp"
-#include "../source/log.hpp"
+#include "source/config.hpp"
+#include "source/log.hpp"
 
 #include <vector>
 #include <yaml-cpp/yaml.h>

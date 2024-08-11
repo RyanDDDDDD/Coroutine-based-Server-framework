@@ -1,5 +1,5 @@
-#include "../source/log.hpp"
-#include "../source/util.hpp"
+#include "source/log.hpp"
+#include "source/util.hpp"
 #include <iostream>
 #include <thread>
 
